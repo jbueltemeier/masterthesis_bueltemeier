@@ -1,23 +1,18 @@
 from abc import abstractmethod
-from typing import Dict,  Sequence, cast, Union
+from typing import Dict,  Sequence, cast
 
-from torch import nn
 import torch
 
 import pystiche
-from pystiche import enc, core
+from pystiche import enc
 
 
 __all__ = [
-    "SequentialDecoder",
     "_Transformer",
 ]
 
 
-class SequentialDecoder(core.SequentialModule):
-    def __init__(self, *modules: nn.Module, layer: Union[int, str]):
-        super().__init__(*modules)
-        self.layer = layer
+
 
 
 class _Transformer(pystiche.Module):
