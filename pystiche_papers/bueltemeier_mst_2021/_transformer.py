@@ -5,14 +5,11 @@ import torch
 
 import pystiche
 from pystiche import enc
-
+from pystiche_papers.bueltemeier_mst_2021._modules import Inspiration, SequentialDecoder, encoder, decoder, bottleneck
 
 __all__ = [
     "_Transformer",
 ]
-
-
-
 
 
 class _Transformer(pystiche.Module):
@@ -27,12 +24,6 @@ class _Transformer(pystiche.Module):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
-        if encoder.layer != decoder.layer:
-            msg = (
-                f"The layer of the encoder {encoder.layer} and decoder {decoder.layer}"
-                " do not match."
-            )
-            raise AttributeError(msg)
 
     @abstractmethod
     def process_input_image(self, image: torch.Tensor) -> torch.Tensor:
@@ -65,16 +56,16 @@ class _ConvertTransformer(_Transformer):
         return f"{region}_target_image" in self._buffers
 
     def process_input_image(self, image: torch.Tensor) -> torch.Tensor:
-        input_enc = self.input_image_to_enc(image)
+        input_enc = self.input_enc_to_repr(self.input_image_to_enc(image))
         converted_enc = self.convert(input_enc)
         return self.enc_to_output_image(converted_enc)
 
     @abstractmethod
-    def input_enc_to_repr(self, image: torch.Tensor, region: str = "") -> torch.Tensor:
+    def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
         pass
 
     @abstractmethod
-    def target_enc_to_repr(self, image: torch.Tensor, region: str = "") -> None:
+    def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
         pass
 
     @abstractmethod
@@ -138,3 +129,24 @@ class _RegionConvertTransformer(_ConvertTransformer):
 
     def has_input_guide(self, region: str) -> bool:
         return f"{region}_input_guide" in self._buffers
+
+
+class MSTTransformer(_ConvertTransformer):
+    def __init__(self, in_channels=3, instance_norm=False) -> None:
+        channels = 64
+        expansion = 4
+        _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
+        _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
+        super().__init__(_encoder, _decoder)
+        self.inspiration = Inspiration(channels * expansion)
+        self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
+
+    def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+        return enc
+
+    def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
+        self.inspiration.setTarget(pystiche.gram_matrix(enc))
+
+    def convert(self, enc: torch.Tensor) -> torch.Tensor:
+        converted_enc = self.inspiration(enc)
+        return self._bottleneck(converted_enc)

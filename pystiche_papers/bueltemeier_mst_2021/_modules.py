@@ -78,7 +78,7 @@ def conv_block(
     instance_norm: bool = False,
 ) -> nn.Sequential:
     modules: List[nn.Module] = [
-        norm(out_channels, instance_norm),
+        norm(in_channels, instance_norm),
         nn.ReLU(inplace=inplace),
     ]
     if upsample:
@@ -197,13 +197,13 @@ class UpResidualBlock(nn.Module):
         return self.residual_layer(x) + self.conv_block(x)
 
 
-def encoder(in_channels=3, ngf=64, expansion=4, instance_norm=False):
+def encoder(in_channels=3, channels=64, expansion=4, instance_norm=False):
     modules = [
-        conv(in_channels, ngf, kernel_size=7, stride=1),
-        norm(ngf, instance_norm=instance_norm),
+        conv(in_channels, channels, kernel_size=7, stride=1),
+        norm(channels, instance_norm=instance_norm),
         nn.ReLU(inplace=True),
         ResidualBlock(
-            ngf,
+            channels,
             32,
             stride=2,
             expansion=expansion,
@@ -212,14 +212,14 @@ def encoder(in_channels=3, ngf=64, expansion=4, instance_norm=False):
         ),
         ResidualBlock(
             32 * expansion,
-            ngf,
+            channels,
             stride=2,
             expansion=expansion,
             downsample=1,
             instance_norm=instance_norm,
         ),
     ]
-    return enc.Encoder(*modules)
+    return enc.SequentialEncoder(modules)
 
 
 class Inspiration(nn.Module):
@@ -270,7 +270,7 @@ def bottleneck(in_channels, expansion=4, instance_norm=False, n_blocks=6):
     return nn.Sequential(*modules)
 
 
-def decoder(in_channels, out_channels, expansion=4, instance_norm=False):
+def decoder(in_channels, out_channels=3, expansion=4, instance_norm=False):
     modules = [
         UpResidualBlock(
             in_channels * expansion,
