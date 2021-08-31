@@ -1,17 +1,21 @@
 from os import path
-from typing import List, Optional, Sized
+import os
+from typing import List, Optional, Sized, Callable, Any, cast, Tuple, Dict
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from pystiche.data import ImageFolderDataset, LocalImage, LocalImageCollection
-from pystiche.image import transforms
+from pystiche.data import LocalImage, LocalImageCollection
+from pystiche.image import transforms, read_image, read_guides
 from pystiche.image.utils import extract_num_channels
 from pystiche_papers.utils import HyperParameters
 
 from ..data.utils import FiniteCycleBatchSampler
 from ._utils import hyper_parameters as _hyper_parameters
+
+from torchvision.datasets.folder import is_image_file
+
 
 __all__ = [
     "content_transform",
@@ -85,11 +89,59 @@ def images(root: str) -> LocalImageCollection:
     return LocalImageCollection({**content_images, **style_images},)
 
 
-def dataset(root: str, transform: Optional[nn.Module] = None,) -> ImageFolderDataset:
+class GuidesImageFolderDataset(Dataset):
+    def __init__(
+            self,
+            root: str,
+            transform: Optional[nn.Module] = None,
+            mask_transform: Optional[nn.Module] = None,
+            importer: Optional[Callable[[str], Any]] = None,
+    ):
+        self.root = os.path.abspath(os.path.expanduser(root))
+        self.folders = self._collect_folder_paths()
+        self.transform = transform
+        self.mask_transform = mask_transform
+
+        if importer is None:
+            def importer(folder: Tuple[str, str]) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+                return read_image(folder[0], make_batched=False), read_guides(folder[1], make_batched=False)
+
+        self.importer = cast(Callable[[Tuple[str, str]], Any], importer)
+
+    def _collect_folder_paths(self) -> List[Tuple[str, str]]:
+        folders = [
+                (path.join(self.root, folder, subfile), path.join(self.root, folder, 'guides'))
+                for folder in os.listdir(self.root)
+                for subfile in os.listdir(path.join(self.root, folder)) if is_image_file( subfile)
+                if 'guides' in os.listdir(path.join(self.root, folder)) and len(os.listdir(path.join(self.root, folder))) == 2
+            ]
+
+        if len(folders) == 0:
+            msg = f"The directory {self.root} does not contain any folders with a " \
+                  f"image and a guides folder."
+            raise RuntimeError(msg)
+
+        return folders
+
+    def __len__(self) -> int:
+        return len(self.folders)
+
+    def __getitem__(self, idx: int) -> Any:
+        folder = self.folders[idx]
+        image, guides = self.importer(folder)
+
+        if self.transform:
+            image = self.transform(image)
+            guides = [self.mask_transform(guide) for guide in guides]
+
+        return image, guides
+
+
+def dataset(root: str, transform: Optional[nn.Module] = None,) -> GuidesImageFolderDataset:
     if transform is None:
         transform = content_transform()
 
-    return ImageFolderDataset(root, transform=transform)
+    return GuidesImageFolderDataset(root, transform=transform)
 
 
 def batch_sampler(
@@ -107,7 +159,7 @@ def batch_sampler(
 def image_loader(dataset: Dataset, pin_memory: bool = True,) -> DataLoader:
     return DataLoader(
         dataset,
-        batch_sampler=batch_sampler(dataset),
+        # batch_sampler=batch_sampler(dataset),
         num_workers=0,
         pin_memory=pin_memory,
     )
