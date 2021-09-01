@@ -1,5 +1,4 @@
 from typing import Optional, Sequence, Tuple
-
 from torch import optim, nn
 
 from pystiche import enc
