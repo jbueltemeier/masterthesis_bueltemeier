@@ -30,7 +30,7 @@ class _Transformer(pystiche.Module):
         self.decoder = decoder
 
     @abstractmethod
-    def process_input_image(self, image: torch.Tensor) -> torch.Tensor:
+    def process_input_image(self, image: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         pass
 
     def input_image_to_enc(self, image: torch.Tensor) -> torch.Tensor:
@@ -39,8 +39,8 @@ class _Transformer(pystiche.Module):
     def enc_to_output_image(self, enc: torch.Tensor) -> torch.Tensor:
         return cast(torch.Tensor, self.decoder(enc))
 
-    def forward(self, input_image: torch.Tensor) -> torch.Tensor:
-        return self.process_input_image(input_image)
+    def forward(self, input_image: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+        return self.process_input_image(input_image, *args, **kwargs)
 
 
 class _ConvertTransformer(_Transformer):
@@ -59,7 +59,7 @@ class _ConvertTransformer(_Transformer):
         return f"{region}_target_image" in self._buffers
 
     @abstractmethod
-    def process_input_image(self, image: torch.Tensor) -> torch.Tensor:
+    def process_input_image(self, image: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         pass
 
     @abstractmethod
@@ -76,7 +76,7 @@ class _ConvertTransformer(_Transformer):
 
 
 class ConvertTransformer(_ConvertTransformer):
-    def process_input_image(self, image: torch.Tensor) -> torch.Tensor:
+    def process_input_image(self, image: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         input_repr = self.input_enc_to_repr(self.input_image_to_enc(image))
         converted_enc = self.convert(input_repr)
         return self.enc_to_output_image(converted_enc)
@@ -148,10 +148,11 @@ class _RegionConvertTransformer(_ConvertTransformer):
 
 
 class RegionConvertTransformer(_RegionConvertTransformer):
-    def process_input_image(self, image: torch.Tensor) -> torch.Tensor:
+    def process_input_image(self, image: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+        regions = args[0]
         input_enc = self.input_image_to_enc(image)
         converted_enc = []
-        for region in self.regions:
+        for region in regions:
             input_repr = self.input_enc_to_repr(input_enc, region=region)
             converted_enc.append(self.convert(input_repr, region=region))
 
