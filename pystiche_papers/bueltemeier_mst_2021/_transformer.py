@@ -9,6 +9,10 @@ from pystiche_papers.bueltemeier_mst_2021._modules import Inspiration, Sequentia
 
 __all__ = [
     "_Transformer",
+    "_ConvertTransformer",
+    "_RegionConvertTransformer",
+    "MSTTransformer",
+    "MaskMSTTransformer"
 ]
 
 
@@ -46,7 +50,6 @@ class _ConvertTransformer(_Transformer):
         with torch.no_grad():
             enc = self.target_image_to_enc(image)
             self.target_enc_to_repr(enc, region=region)
-
         self.register_buffer(f"{region}_target_image", image, persistent=False)
 
     def target_image_to_enc(self, image: torch.Tensor) -> torch.Tensor:
@@ -55,9 +58,27 @@ class _ConvertTransformer(_Transformer):
     def has_target_image(self, region: str = "") -> bool:
         return f"{region}_target_image" in self._buffers
 
+    @abstractmethod
     def process_input_image(self, image: torch.Tensor) -> torch.Tensor:
-        input_enc = self.input_enc_to_repr(self.input_image_to_enc(image))
-        converted_enc = self.convert(input_enc)
+        pass
+
+    @abstractmethod
+    def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
+        pass
+
+    @abstractmethod
+    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+        pass
+
+
+class ConvertTransformer(_ConvertTransformer):
+    def process_input_image(self, image: torch.Tensor) -> torch.Tensor:
+        input_repr = self.input_enc_to_repr(self.input_image_to_enc(image))
+        converted_enc = self.convert(input_repr)
         return self.enc_to_output_image(converted_enc)
 
     @abstractmethod
@@ -69,7 +90,7 @@ class _ConvertTransformer(_Transformer):
         pass
 
     @abstractmethod
-    def convert(self, enc: torch.Tensor) -> torch.Tensor:
+    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
         pass
 
 
@@ -84,20 +105,6 @@ class _RegionConvertTransformer(_ConvertTransformer):
         super().__init__(encoder, decoder)
         self.regions = regions
 
-    def verify_regions(self, given_regions: Sequence[str]) -> None:
-        if not all(key in given_regions for key in self.regions):
-            msg = (
-                f"This autoencoder requires {self.regions} but only {given_regions} "
-                f"are given. The missing regions are: "
-                f"{set(self.regions).difference(given_regions)}"
-            )
-            raise TypeError(msg)
-
-    def set_target_guides(self, guides: Dict[str, torch.Tensor]) -> None:
-        self.verify_regions(list(guides.keys()))
-        for region in self.regions:
-            self.set_target_guide(guides[region], region, recalc_enc=True)
-
     def set_target_guide(
             self, guide: torch.Tensor, region: str, recalc_enc: bool = True
     ) -> None:
@@ -107,12 +114,7 @@ class _RegionConvertTransformer(_ConvertTransformer):
         self.register_buffer(f"{region}_target_guide", guide, persistent=False)
         self.register_buffer(f"{region}_target_enc_guide", enc_guide, persistent=False)
         if recalc_enc and self.has_target_image(region):
-            self.set_target_image(getattr(self, f"{region}_target_image"))
-
-    def set_target_images(self, images: Dict[str, torch.Tensor]) -> None:
-        self.verify_regions(list(images.keys()))
-        for region in self.regions:
-            self.set_target_image(images[region], region)
+            self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
 
     def set_input_guides(self, guides: Dict[str, torch.Tensor]) -> None:
         for region, guide in guides.items():
@@ -130,8 +132,47 @@ class _RegionConvertTransformer(_ConvertTransformer):
     def has_input_guide(self, region: str) -> bool:
         return f"{region}_input_guide" in self._buffers
 
+    @staticmethod
+    def apply_guide(image: torch.Tensor, guide: torch.Tensor) -> torch.Tensor:
+        r"""Apply a guide to an image.
 
-class MSTTransformer(_ConvertTransformer):
+        Args:
+            image: Image of shape :math:`B \times C \times H \times W`.
+            guide: Guide of shape :math:`1 \times 1 \times H \times W`.
+        """
+        return image * guide
+
+    @abstractmethod
+    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+        pass
+
+
+class RegionConvertTransformer(_RegionConvertTransformer):
+    def process_input_image(self, image: torch.Tensor) -> torch.Tensor:
+        input_enc = self.input_image_to_enc(image)
+        converted_enc = []
+        for region in self.regions:
+            input_repr = self.input_enc_to_repr(input_enc, region=region)
+            converted_enc.append(self.convert(input_repr, region=region))
+
+        converted_enc = torch.sum(torch.stack(converted_enc), dim=0)
+        converted_enc = self._bottleneck(converted_enc)
+        return self.enc_to_output_image(converted_enc)
+
+    @abstractmethod
+    def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
+        pass
+
+    @abstractmethod
+    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+        pass
+
+
+class MSTTransformer(ConvertTransformer):
     def __init__(self, in_channels=3, instance_norm=False) -> None:
         channels = 64
         expansion = 4
@@ -141,12 +182,41 @@ class MSTTransformer(_ConvertTransformer):
         self.inspiration = Inspiration(channels * expansion)
         self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
 
-    def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+    def input_enc_to_repr(self, enc: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         return enc
 
     def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
-        self.inspiration.setTarget(pystiche.gram_matrix(enc))
+        target_repr = pystiche.gram_matrix(enc)
+        self.register_buffer(f"_target_repr", target_repr, persistent=False)
+        self.inspiration.setTarget(target_repr)
 
-    def convert(self, enc: torch.Tensor) -> torch.Tensor:
+    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
         converted_enc = self.inspiration(enc)
         return self._bottleneck(converted_enc)
+
+
+class MaskMSTTransformer(RegionConvertTransformer):
+    def __init__(self, regions: Sequence[str], in_channels=3, instance_norm=False) -> None:
+        channels = 64
+        expansion = 4
+        _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
+        _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
+        super().__init__(_encoder, _decoder, regions=regions)
+        self.inspiration = Inspiration(channels * expansion)
+        self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
+
+    def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+        inpur_repr = enc
+        if self.has_input_guide(region):
+            inpur_repr = self.apply_guide(enc, getattr(self, f"{region}_input_enc_guide"))
+        return inpur_repr
+
+    def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
+        if self.has_target_guide(region):
+            enc = self.apply_guide(enc, getattr(self, f"{region}_target_enc_guide"))
+        target_repr = pystiche.gram_matrix(enc)
+        self.register_buffer(f"{region}_target_repr", target_repr, persistent=False)
+
+    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+        self.inspiration.setTarget(getattr(self, f"{region}_target_repr"))
+        return self.inspiration(enc)
