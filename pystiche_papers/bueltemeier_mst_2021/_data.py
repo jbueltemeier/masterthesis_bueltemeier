@@ -71,22 +71,45 @@ def style_transform(
 
 def images(root: str) -> LocalImageCollection:
 
-    content_root = path.join(root, "content/")
-    style_root = path.join(root, "style/")
-    content_images = {
-        "karya": LocalImage(path.join(content_root, "karya.jpg"),),
-        "004": LocalImage(path.join(content_root, "004.jpg"),),
-        "04": LocalImage(path.join(content_root, "04.jpg"),),
-        "bueltemeier": LocalImage(path.join(content_root, "bueltemeier.png"),),
+    guide_images = {
+        "bueltemeier": LocalImage(
+            file=path.join(root, "bueltemeier.png"),
+            collect_local_guides=True
+        ),
+        "doerksen": LocalImage(
+            file=path.join(root, "doerksen.jpg"),
+            collect_local_guides=True
+        ),
+        "lohweg": LocalImage(
+            file=path.join(root, "Lohweg_glasses.png"),
+            collect_local_guides=True
+        ),
+        "schaede": LocalImage(
+            file=path.join(root, "Schaede_glasses.jpg"),
+            collect_local_guides=True
+        ),
+        "DM_100_1996": LocalImage(
+            file=path.join(root, "DM_100_1996.png"),
+            collect_local_guides=True
+        ),
+        "MAD_20_2005": LocalImage(
+            file=path.join(root, "MAD_20_2005.png"),
+            collect_local_guides=True
+        ),
+        "Specimen_0_2": LocalImage(
+            file=path.join(root, "Specimen_0_2.png"),
+            collect_local_guides=True
+        ),
+        "Specimen_0_2005": LocalImage(
+            file=path.join(root, "Specimen_0_2005.png"),
+            collect_local_guides=True
+        ),
+        "UHD_20_1997": LocalImage(
+            file=path.join(root, "UHD_20_1997.png"),
+            collect_local_guides=True
+        ),
     }
-
-    style_images = {
-        "DM100": LocalImage(path.join(style_root, "DM_100_1996.png"),),
-        "MAD20": LocalImage(path.join(style_root, "MAD_20_2005.png"),),
-        "Specimen0": LocalImage(path.join(style_root, "Specimen_0_2.png"),),
-        "UHD20": LocalImage(path.join(style_root, "UHD_20_1997.png"),),
-    }
-    return LocalImageCollection({**content_images, **style_images},)
+    return LocalImageCollection({**guide_images},)
 
 
 class GuidesImageFolderDataset(Dataset):
