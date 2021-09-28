@@ -1,12 +1,13 @@
-from typing import Any, Dict, Union, Tuple, List, Optional, Type
+from typing import Any, Dict, Union, Tuple, List, Optional, Type, cast
 
 from torch import nn
 import torch
 from torch.autograd import Variable
+import torch.nn.functional as F
 
 from ..utils import AutoPadConv2d
 
-from pystiche import enc, core
+from pystiche import enc, core, meta
 
 
 __all__ = [
@@ -22,6 +23,17 @@ __all__ = [
     "bottleneck",
     "decoder",
 ]
+
+
+class MSTSequentialEncoder(enc.SequentialEncoder):
+    def propagate_guide(self, guide: torch.Tensor) -> torch.Tensor:
+        for module in self.children():
+            if isinstance(module, ResidualBlock):
+                # TODO: current workaround, implement this properly (conv handling)
+                guide = cast(torch.Tensor, F.max_pool2d(guide, kernel_size=2))
+            else:
+                guide = enc.guides.propagate_guide(module, guide)
+        return guide
 
 
 class SequentialDecoder(core.SequentialModule):
@@ -219,7 +231,7 @@ def encoder(in_channels=3, channels=64, expansion=4, instance_norm=False):
             instance_norm=instance_norm,
         ),
     ]
-    return enc.SequentialEncoder(modules)
+    return MSTSequentialEncoder(modules)
 
 
 class Inspiration(nn.Module):
