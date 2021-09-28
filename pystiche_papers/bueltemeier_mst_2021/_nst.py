@@ -16,6 +16,8 @@ from ._utils import hyper_parameters as _hyper_parameters
 from ._transformer import MaskMSTTransformer
 from ._loss import guided_perceptual_loss
 
+__all__ = ["default_mask_transformer_optim_loop", "training", "stylization"]
+
 
 def default_mask_transformer_optim_loop(
         image_loader: DataLoader,
@@ -88,7 +90,7 @@ def training(
         log_fn: Optional[
             Callable[[int, Union[torch.Tensor, pystiche.LossDict], float, float], None]
         ] = None,
-) -> nn.Module:
+) -> MaskMSTTransformer:
 
     device = misc.get_device()
 
@@ -126,3 +128,21 @@ def training(
         logger=logger,
         log_fn=log_fn,
     )
+
+
+def stylization(
+        input_image: torch.Tensor,
+        input_guides: Dict[str, torch.Tensor],
+        transformer: MaskMSTTransformer,
+) -> torch.Tensor:
+
+    device = input_image.device
+    transformer = transformer.eval()
+    transformer = transformer.to(device)
+
+    with torch.no_grad():
+        regions = list(input_guides.keys())
+        transformer.set_input_guides(input_guides)
+        output_image = transformer(input_image, regions)
+
+    return cast(torch.Tensor, output_image).detach()
