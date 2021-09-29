@@ -61,5 +61,5 @@ def hyper_parameters() -> HyperParameters:
             image_size=256,
             edge="short"
         ),
-        batch_sampler=HyperParameters(num_batches=100000, batch_size=1),
+        batch_sampler=HyperParameters(num_iterations=100000, batch_size=1),
     )

@@ -11,7 +11,7 @@ from pystiche.image import transforms, read_image, read_guides
 from pystiche.image.utils import extract_num_channels
 from pystiche_papers.utils import HyperParameters
 
-from ..data.utils import FiniteCycleBatchSampler
+from ..data.utils import RandomNumIterationsBatchSampler
 from ._utils import hyper_parameters as _hyper_parameters
 
 from torchvision.datasets.folder import is_image_file
@@ -223,12 +223,12 @@ def dataset(root: str, transform: Optional[nn.Module] = None, mask_transform: Op
 
 def batch_sampler(
     data_source: Sized, hyper_parameters: Optional[HyperParameters] = None,
-) -> FiniteCycleBatchSampler:
+) -> RandomNumIterationsBatchSampler:
     if hyper_parameters is None:
         hyper_parameters = _hyper_parameters()
-    return FiniteCycleBatchSampler(
+    return RandomNumIterationsBatchSampler(
         data_source,
-        num_batches=hyper_parameters.batch_sampler.num_batches,
+        num_iterations=hyper_parameters.batch_sampler.num_iterations,
         batch_size=hyper_parameters.batch_sampler.batch_size,
     )
 
