@@ -53,4 +53,8 @@ def hyper_parameters() -> HyperParameters:
         guided_style_loss=style_loss.new_similar(
             region_weights="sum"
         ),
+        content_transform=HyperParameters(
+            image_size=512,
+            edge="short"
+        )
     )
