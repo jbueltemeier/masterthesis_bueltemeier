@@ -1,6 +1,8 @@
 from copy import copy
-from typing import Optional, Sequence
+from typing import Optional, Sequence, List, Callable, Union
 
+import torch
+import pystiche
 from pystiche import enc, loss, ops
 from pystiche_papers.utils import HyperParameters
 
@@ -12,6 +14,7 @@ __all__ = [
     "style_loss",
     "guided_style_loss",
     "perceptual_loss",
+    "FlexibleGuidedPerceptualLoss",
     "guided_perceptual_loss",
 ]
 
@@ -52,6 +55,28 @@ def style_loss(
     )
 
 
+class MultiRegionOperator(ops.MultiRegionOperator):
+    def __init__(
+            self,
+            regions: Sequence[str],
+            get_op: Callable[[str, float], ops.Operator],
+            region_weights: Union[str, Sequence[float]] = "sum",
+            score_weight: float = 1e0,
+    ):
+        super().__init__(
+            regions, get_op, region_weights=region_weights, score_weight=score_weight,
+        )
+        self.input_regions: List[str] = []
+
+    def set_input_regions(self, regions: torch.Tensor) -> None:
+        self.input_regions = regions
+
+    def process_input_image(self, input_image: torch.Tensor) -> pystiche.LossDict:
+        return pystiche.LossDict(
+            [(name, op(input_image)) for name, op in self.named_children() if name in self.input_regions]
+        )
+
+
 def guided_style_loss(
     regions: Sequence[str],
     multi_layer_encoder: Optional[enc.MultiLayerEncoder] = None,
@@ -75,7 +100,7 @@ def guided_style_loss(
             hyper_parameters=hyper_parameters.new_similar(),  # type: ignore[union-attr]
         )
 
-    return ops.MultiRegionOperator(
+    return MultiRegionOperator(
         regions,
         get_region_op,
         region_weights=hyper_parameters.guided_style_loss.region_weights,
@@ -103,11 +128,21 @@ def perceptual_loss(
     )
 
 
+class FlexibleGuidedPerceptualLoss(loss.GuidedPerceptualLoss):
+    def set_input_regions(self, regions: List[str]) -> None:
+        r"""Set the current
+
+        Args:
+            regions: List of the regions.
+        """
+        self.style_loss.input_regions = regions
+
+
 def guided_perceptual_loss(
     regions: Sequence[str],
     multi_layer_encoder: Optional[enc.MultiLayerEncoder] = None,
     hyper_parameters: Optional[HyperParameters] = None,
-) -> loss.GuidedPerceptualLoss:
+) -> FlexibleGuidedPerceptualLoss:
 
     if multi_layer_encoder is None:
         multi_layer_encoder = _multi_layer_encoder()
@@ -115,7 +150,7 @@ def guided_perceptual_loss(
     if hyper_parameters is None:
         hyper_parameters = _hyper_parameters()
 
-    return loss.GuidedPerceptualLoss(
+    return FlexibleGuidedPerceptualLoss(
         content_loss(
             multi_layer_encoder=multi_layer_encoder, hyper_parameters=hyper_parameters,
         ),

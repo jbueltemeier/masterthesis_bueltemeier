@@ -7,16 +7,18 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
 import pystiche
-from pystiche import optim, misc, loss
+from pystiche import optim, misc, image
 from pystiche.image.transforms.functional import grayscale_to_fakegrayscale
 
 from pystiche_papers.utils import HyperParameters
 from ._utils import optimizer as _optimizer
 from ._data import style_transform as _style_transform
 from ._data import style_mask_transform as _style_mask_transform
+from ._data import content_transform as _content_transform
+from ._data import content_mask_transform as _content_mask_transform
 from ._utils import hyper_parameters as _hyper_parameters
 from ._transformer import MaskMSTTransformer
-from ._loss import guided_perceptual_loss
+from ._loss import guided_perceptual_loss, FlexibleGuidedPerceptualLoss
 
 __all__ = ["default_mask_transformer_optim_loop", "training", "stylization"]
 
@@ -24,8 +26,8 @@ __all__ = ["default_mask_transformer_optim_loop", "training", "stylization"]
 def default_mask_transformer_optim_loop(
         image_loader: DataLoader,
         transformer: MaskMSTTransformer,
-        criterion: nn.Module,
-        criterion_update_fn: Callable[[torch.Tensor, Dict[str, torch.Tensor], nn.Module], None],
+        criterion: FlexibleGuidedPerceptualLoss,
+        criterion_update_fn: Callable[[torch.Tensor, Dict[str, torch.Tensor], FlexibleGuidedPerceptualLoss], None],
         optimizer: Optional[Optimizer] = None,
         quiet: bool = False,
         logger: Optional[optim.OptimLogger] = None,
@@ -123,10 +125,11 @@ def training(
         criterion.set_style_guide(region,guide)
 
 
-    def criterion_update_fn(input_image: torch.Tensor, input_guides: Dict[str, torch.Tensor], criterion: nn.Module) -> None:
-        cast(loss.PerceptualLoss, criterion).set_content_image(grayscale_to_fakegrayscale(input_image))
+    def criterion_update_fn(input_image: torch.Tensor, input_guides: Dict[str, torch.Tensor], criterion: FlexibleGuidedPerceptualLoss) -> None:
+        cast(FlexibleGuidedPerceptualLoss, criterion).set_content_image(grayscale_to_fakegrayscale(input_image))
         for region, guide in input_guides.items():
-            cast(loss.PerceptualLoss, criterion).set_content_guide(region, guide)
+            cast(FlexibleGuidedPerceptualLoss, criterion).set_content_guide(region, guide)
+        cast(FlexibleGuidedPerceptualLoss, criterion).set_input_regions(list(input_guides.keys()))
 
     return default_mask_transformer_optim_loop(
         content_image_loader,
@@ -144,11 +147,26 @@ def stylization(
         input_image: torch.Tensor,
         input_guides: Dict[str, torch.Tensor],
         transformer: MaskMSTTransformer,
+        hyper_parameters: Optional[HyperParameters] = None,
 ) -> torch.Tensor:
 
+    if hyper_parameters is None:
+        hyper_parameters = _hyper_parameters()
+    image_size = hyper_parameters.content_transform.image_size
     device = input_image.device
     transformer = transformer.eval()
     transformer = transformer.to(device)
+
+
+    if image.extract_num_channels(input_image) == 3 or image.extract_image_size(input_image) != (image_size, image_size):
+        content_transform = _content_transform(hyper_parameters=hyper_parameters)
+        content_transform = content_transform.to(device)
+
+        content_mask_transform = _content_mask_transform(hyper_parameters=hyper_parameters)
+        content_mask_transform = content_mask_transform.to(device)
+        input_image = content_transform(input_image)
+        for name, guide in input_guides.items():
+            input_guides[name] = content_mask_transform(guide)
 
     with torch.no_grad():
         regions = list(input_guides.keys())
