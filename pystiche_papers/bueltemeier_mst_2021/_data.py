@@ -51,6 +51,7 @@ def content_transform(
     ]
     return nn.Sequential(*transforms_)
 
+
 def content_mask_transform(
         hyper_parameters: Optional[HyperParameters] = None,
 ) -> nn.Sequential:
@@ -71,13 +72,31 @@ def style_transform(
     if hyper_parameters is None:
         hyper_parameters = _hyper_parameters()
 
+    image_size = hyper_parameters.style_transform.image_size
     transforms_: List[nn.Module] = [
         transforms.Resize(
-            hyper_parameters.style_transform.edge_size,
+            image_size,
             edge=hyper_parameters.style_transform.edge,
         ),
+        transforms.CenterCrop((image_size, image_size)),
         OptionalRGBAToRGB(),
         transforms.RGBToGrayscale(),
+    ]
+    return nn.Sequential(*transforms_)
+
+
+def mask_style_transform(
+        hyper_parameters: Optional[HyperParameters] = None,
+) -> nn.Sequential:
+    if hyper_parameters is None:
+        hyper_parameters = _hyper_parameters()
+    image_size = hyper_parameters.style_transform.image_size
+    transforms_: List[nn.Module] = [
+        transforms.Resize(
+            image_size,
+            edge=hyper_parameters.style_transform.edge,
+        ),
+        transforms.CenterCrop((image_size, image_size)),
     ]
     return nn.Sequential(*transforms_)
 
