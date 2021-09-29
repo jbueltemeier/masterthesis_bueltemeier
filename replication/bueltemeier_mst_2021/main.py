@@ -59,6 +59,21 @@ def training(args):
         model_name += "__instance_norm"
     utils.save_state_dict(transformer, model_name, root=args.model_dir)
 
+    # stylise some images from dataset
+    iter_loader = iter(image_loader)
+    for i in range(10):
+        content_image, content_guides = next(iter_loader)
+        output_image = paper.stylization(
+            content_image,
+            content_guides,
+            transformer
+        )
+        output_name = f"intaglio_random_content_{i}"
+        if args.instance_norm:
+            output_name += "__instance_norm"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        image.write_image(output_image, output_file)
+
     for content in contents:
         content_image, content_guides = read_image_and_guides(images[content], device=args.device, size=image_size)
         output_image = paper.stylization(
