@@ -30,7 +30,7 @@ def default_mask_transformer_optim_loop(
         log_fn: Optional[
             Callable[[int, Union[torch.Tensor, pystiche.LossDict], float, float], None]
         ] = None,
-) -> nn.Module:
+) -> MaskMSTTransformer:
 
     if optimizer is None:
         optimizer = _optimizer(transformer)
