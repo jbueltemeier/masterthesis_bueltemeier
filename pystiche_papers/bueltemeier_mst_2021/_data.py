@@ -51,6 +51,19 @@ def content_transform(
     ]
     return nn.Sequential(*transforms_)
 
+def content_mask_transform(
+        hyper_parameters: Optional[HyperParameters] = None,
+) -> nn.Sequential:
+    if hyper_parameters is None:
+        hyper_parameters = _hyper_parameters()
+
+    image_size = hyper_parameters.content_transform.image_size
+    transforms_: List[nn.Module] = [
+        transforms.Resize(image_size, edge=hyper_parameters.content_transform.edge),
+        transforms.CenterCrop((image_size, image_size)),
+    ]
+    return nn.Sequential(*transforms_)
+
 
 def style_transform(
     hyper_parameters: Optional[HyperParameters] = None,
@@ -171,16 +184,20 @@ class GuidesImageFolderDataset(Dataset):
 
         if self.transform:
             image = self.transform(image)
-            guides = [self.mask_transform(guide) for guide in guides]
+            for guide_name, guide in guides.items():
+                guides[guide_name] = self.mask_transform(guide)
 
         return image, guides
 
 
-def dataset(root: str, transform: Optional[nn.Module] = None,) -> GuidesImageFolderDataset:
+def dataset(root: str, transform: Optional[nn.Module] = None, mask_transform: Optional[nn.Module] = None,) -> GuidesImageFolderDataset:
     if transform is None:
         transform = content_transform()
 
-    return GuidesImageFolderDataset(root, transform=transform)
+    if mask_transform is None:
+        mask_transform = content_mask_transform()
+
+    return GuidesImageFolderDataset(root, transform=transform, mask_transform=mask_transform)
 
 
 def batch_sampler(
@@ -198,7 +215,7 @@ def batch_sampler(
 def image_loader(dataset: Dataset, pin_memory: bool = True,) -> DataLoader:
     return DataLoader(
         dataset,
-        # batch_sampler=batch_sampler(dataset),
+        batch_sampler=batch_sampler(dataset),
         num_workers=0,
         pin_memory=pin_memory,
     )
