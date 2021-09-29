@@ -8,10 +8,12 @@ from torch.utils.data import DataLoader
 
 import pystiche
 from pystiche import optim, misc, loss
+from pystiche.image.transforms.functional import grayscale_to_fakegrayscale
 
 from pystiche_papers.utils import HyperParameters
 from ._utils import optimizer as _optimizer
 from ._data import style_transform as _style_transform
+from ._data import style_mask_transform as _style_mask_transform
 from ._utils import hyper_parameters as _hyper_parameters
 from ._transformer import MaskMSTTransformer
 from ._loss import guided_perceptual_loss
@@ -47,7 +49,7 @@ def default_mask_transformer_optim_loop(
     for batch, input_data in enumerate(image_loader, 1):
         input_image, input_guides = input_data
         regions = list(input_guides.keys())
-        input_image.to(device)
+        input_image = input_image.to(device)
         for key in input_guides.keys():
             input_guides[key] = input_guides[key].to(device)
 
@@ -60,7 +62,7 @@ def default_mask_transformer_optim_loop(
             # See https://github.com/pmeier/pystiche/pull/264#discussion_r430205029
             optimizer.zero_grad()  # type: ignore[union-attr]
             output_image = transformer(input_image, regions)
-            loss = criterion(output_image)
+            loss = criterion(grayscale_to_fakegrayscale(output_image))
             loss.backward()
 
             processing_time = time.time() - processing_time_start
@@ -98,7 +100,7 @@ def training(
         hyper_parameters = _hyper_parameters()
 
     regions = list(style_images_and_guides.keys())
-    transformer = MaskMSTTransformer(regions, instance_norm=instance_norm)
+    transformer = MaskMSTTransformer(regions, instance_norm=instance_norm, in_channels=1)
     transformer = transformer.train().to(device)
 
     criterion = guided_perceptual_loss(regions, hyper_parameters=hyper_parameters)
@@ -109,12 +111,20 @@ def training(
     style_transform = _style_transform(hyper_parameters=hyper_parameters)
     style_transform = style_transform.to(device)
 
+    style_mask_transform = _style_mask_transform(hyper_parameters=hyper_parameters)
+    style_mask_transform = style_mask_transform.to(device)
+
     for region, (image, guide) in style_images_and_guides.items():
-        criterion.set_style_guide(region, guide)
-        criterion.set_style_image(region, style_transform(image))
+        image = style_transform(image)
+        transformer.set_target_image(image, region)
+        criterion.set_style_image(region, grayscale_to_fakegrayscale(image))
+        guide = style_mask_transform(guide)
+        transformer.set_target_guide(guide, region)
+        criterion.set_style_guide(region,guide)
+
 
     def criterion_update_fn(input_image: torch.Tensor, input_guides: Dict[str, torch.Tensor], criterion: nn.Module) -> None:
-        cast(loss.PerceptualLoss, criterion).set_content_image(input_image)
+        cast(loss.PerceptualLoss, criterion).set_content_image(grayscale_to_fakegrayscale(input_image))
         for region, guide in input_guides.items():
             cast(loss.PerceptualLoss, criterion).set_content_guide(region, guide)
 

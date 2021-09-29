@@ -19,7 +19,9 @@ from torchvision.datasets.folder import is_image_file
 
 __all__ = [
     "content_transform",
+    "content_mask_transform",
     "style_transform",
+    "style_mask_transform",
     "images",
     "dataset",
     "batch_sampler",
@@ -85,7 +87,7 @@ def style_transform(
     return nn.Sequential(*transforms_)
 
 
-def mask_style_transform(
+def style_mask_transform(
         hyper_parameters: Optional[HyperParameters] = None,
 ) -> nn.Sequential:
     if hyper_parameters is None:
