@@ -108,6 +108,22 @@ def images(root: str) -> LocalImageCollection:
             file=path.join(root, "UHD_20_1997.png"),
             collect_local_guides=True
         ),
+        "GBP_5_2002": LocalImage(
+            file=path.join(root, "GBP_5_2002.png"),
+            collect_local_guides=True
+        ),
+        "UAH_1_2006": LocalImage(
+            file=path.join(root, "UAH_1_2006.png"),
+            collect_local_guides=True
+        ),
+        "LRD_50_2008": LocalImage(
+            file=path.join(root, "LRD_50_2008.png"),
+            collect_local_guides=True
+        ),
+        "MAD_2000_2002": LocalImage(
+            file=path.join(root, "MAD_2000_2002.png"),
+            collect_local_guides=True
+        ),
     }
     return LocalImageCollection({**guide_images},)
 
