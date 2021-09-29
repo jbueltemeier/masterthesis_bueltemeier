@@ -14,7 +14,16 @@ def read_image_and_guides(image, **read_kwargs):
 def training(args):
     image_size = 512
     contents = ("bueltemeier", "doerksen", "lohweg", "schaede", )
-    styles = ("DM_100_1996", "MAD_20_2005", "Specimen_0_2", "Specimen_0_2005", "UHD_20_1997")
+    styles = (
+        "DM_100_1996",
+        "MAD_20_2005",
+        "Specimen_0_2",
+        "Specimen_0_2005",
+        "UHD_20_1997",
+        "GBP_5_2002",
+        "UAH_1_2006",
+        "LRD_50_2008",
+        "MAD_2000_2002")
 
     images = paper.images(args.image_source_dir)
     style = 'MAD_20_2005'
@@ -23,20 +32,16 @@ def training(args):
         'background': (style_images[style][0], style_images[style][1]["background"]),
         'skin': (style_images[style][0], style_images[style][1]["skin"]),
         'nose': (style_images[style][0], style_images[style][1]["nose"]),
-        # 'glasses': (),
+        'glasses': (style_images["LRD_50_2008"][0], style_images["LRD_50_2008"][1]["accessoire"]),
         'eye': (style_images[style][0], style_images[style][1]["eye"]),
         'brows': (style_images[style][0], style_images[style][1]["brows"]),
         'ears': (style_images[style][0], style_images[style][1]["ears"]),
         'lips': (style_images[style][0], style_images[style][1]["lips"]),
         'hair': (style_images[style][0], style_images[style][1]["hair"]),
-        # 'headwear': (),
-        # 'accessoire': (),
+        'headwear': (style_images["MAD_2000_2002"][0], style_images["MAD_2000_2002"][1]["headwear"]),
+        'accessoire': (style_images["GBP_5_2002"][0], style_images["GBP_5_2002"][1]["accessoire"]),
         'body': (style_images[style][0], style_images[style][1]["body"]),
     }
-    # for key in style_images_and_guides.keys():
-    #     images = style_images_and_guides[key]
-    #     image.show_image(images[0])
-    #     image.show_image(images[1])
 
     dataset = paper.dataset(path.join(args.dataset_dir),)
     image_loader = paper.image_loader(dataset, pin_memory=str(args.device).startswith("cuda"),)
