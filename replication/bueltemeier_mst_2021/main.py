@@ -13,7 +13,11 @@ def read_image_and_guides(image, **read_kwargs):
 
 def training(args):
     image_size = 256
-    contents = ("bueltemeier", "doerksen", "lohweg", "schaede", )
+    contents = (
+        "bueltemeier",
+        "doerksen",
+        # "lohweg",    TODO: beard
+        "schaede", )
     styles = (
         "DM_100_1996",
         "MAD_20_2005",
