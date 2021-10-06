@@ -54,12 +54,12 @@ def hyper_parameters() -> HyperParameters:
             region_weights="sum"
         ),
         content_transform=HyperParameters(
-            image_size=256,
-            edge="short"
-        ),
-        style_transform=HyperParameters(
             image_size=512,
             edge="short"
         ),
-        batch_sampler=HyperParameters(num_iterations=100000, batch_size=1),
+        style_transform=HyperParameters(
+            image_size=768,
+            edge="short"
+        ),
+        batch_sampler=HyperParameters(num_iterations=70000, batch_size=1),
     )

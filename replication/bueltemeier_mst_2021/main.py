@@ -99,7 +99,7 @@ def parse_input():
     dataset_dir = None
     model_dir = None
     device = None
-    instance_norm = False
+    instance_norm = True
     quiet = False
 
     def process_dir(dir):
