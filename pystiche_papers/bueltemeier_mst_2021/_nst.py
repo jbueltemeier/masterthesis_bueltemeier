@@ -122,7 +122,7 @@ def training(
         criterion.set_style_image(region, grayscale_to_fakegrayscale(image))
         guide = style_mask_transform(guide)
         transformer.set_target_guide(guide, region)
-        criterion.set_style_guide(region,guide)
+        criterion.set_style_guide(region, guide)
 
 
     def criterion_update_fn(input_image: torch.Tensor, input_guides: Dict[str, torch.Tensor], criterion: FlexibleGuidedPerceptualLoss) -> None:

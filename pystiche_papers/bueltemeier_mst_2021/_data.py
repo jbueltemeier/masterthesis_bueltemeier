@@ -62,7 +62,7 @@ def content_mask_transform(
 
     image_size = hyper_parameters.content_transform.image_size
     transforms_: List[nn.Module] = [
-        transforms.Resize(image_size, edge=hyper_parameters.content_transform.edge),
+        transforms.Resize(image_size, edge=hyper_parameters.content_transform.edge, interpolation_mode="nearest"),
         transforms.CenterCrop((image_size, image_size)),
     ]
     return nn.Sequential(*transforms_)
@@ -97,6 +97,7 @@ def style_mask_transform(
         transforms.Resize(
             image_size,
             edge=hyper_parameters.style_transform.edge,
+            interpolation_mode="nearest"
         ),
         transforms.CenterCrop((image_size, image_size)),
     ]

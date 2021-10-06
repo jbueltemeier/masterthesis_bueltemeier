@@ -58,7 +58,7 @@ def hyper_parameters() -> HyperParameters:
             edge="short"
         ),
         style_transform=HyperParameters(
-            image_size=256,
+            image_size=512,
             edge="short"
         ),
         batch_sampler=HyperParameters(num_iterations=100000, batch_size=1),

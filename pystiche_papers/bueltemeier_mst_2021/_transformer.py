@@ -154,7 +154,10 @@ class RegionConvertTransformer(_RegionConvertTransformer):
         converted_enc = []
         for region in regions:
             input_repr = self.input_enc_to_repr(input_enc, region=region)
-            converted_enc.append(self.convert(input_repr, region=region))
+            transformed_enc = self.convert(input_repr, region=region)
+            if self.has_input_guide(region):
+                transformed_enc = self.apply_guide(transformed_enc, getattr(self, f"{region}_input_enc_guide"))
+            converted_enc.append(transformed_enc)
 
         converted_enc = torch.sum(torch.stack(converted_enc), dim=0)
         converted_enc = self._bottleneck(converted_enc)

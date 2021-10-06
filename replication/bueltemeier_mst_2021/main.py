@@ -8,7 +8,7 @@ from pystiche_papers import utils
 
 
 def read_image_and_guides(image, **read_kwargs):
-    return image.read(**read_kwargs), image.guides.read(**read_kwargs)
+    return image.read(**read_kwargs), image.guides.read(interpolation_mode='nearest', **read_kwargs)
 
 
 def training(args):
