@@ -2,12 +2,11 @@ import time
 from typing import Callable, Optional, Union, cast, Dict, Tuple
 
 import torch
-from torch import nn
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
-
+from torch import nn
 import pystiche
-from pystiche import optim, misc, image
+from pystiche import optim, misc, loss, image
 from pystiche.image.transforms.functional import grayscale_to_fakegrayscale
 
 from pystiche_papers.utils import HyperParameters
@@ -17,23 +16,25 @@ from ._data import style_mask_transform as _style_mask_transform
 from ._data import content_transform as _content_transform
 from ._data import content_mask_transform as _content_mask_transform
 from ._utils import hyper_parameters as _hyper_parameters
-from ._transformer import MaskMSTTransformer
-from ._loss import guided_perceptual_loss, FlexibleGuidedPerceptualLoss
+from ._transformer import MSTTransformer, MaskMSTTransformer
+from ._loss import perceptual_loss, guided_perceptual_loss, FlexibleGuidedPerceptualLoss
 
 __all__ = ["default_mask_transformer_optim_loop", "mask_training", "mask_stylization"]
 
 
 def default_mask_transformer_optim_loop(
-        image_loader: DataLoader,
-        transformer: MaskMSTTransformer,
-        criterion: FlexibleGuidedPerceptualLoss,
-        criterion_update_fn: Callable[[torch.Tensor, Dict[str, torch.Tensor], FlexibleGuidedPerceptualLoss], None],
-        optimizer: Optional[Optimizer] = None,
-        quiet: bool = False,
-        logger: Optional[optim.OptimLogger] = None,
-        log_fn: Optional[
-            Callable[[int, Union[torch.Tensor, pystiche.LossDict], float, float], None]
-        ] = None,
+    image_loader: DataLoader,
+    transformer: MaskMSTTransformer,
+    criterion: FlexibleGuidedPerceptualLoss,
+    criterion_update_fn: Callable[
+        [torch.Tensor, Dict[str, torch.Tensor], FlexibleGuidedPerceptualLoss], None
+    ],
+    optimizer: Optional[Optimizer] = None,
+    quiet: bool = False,
+    logger: Optional[optim.OptimLogger] = None,
+    log_fn: Optional[
+        Callable[[int, Union[torch.Tensor, pystiche.LossDict], float, float], None]
+    ] = None,
 ) -> MaskMSTTransformer:
 
     if optimizer is None:
@@ -84,16 +85,63 @@ def default_mask_transformer_optim_loop(
     return transformer
 
 
+def training(
+    content_image_loader: DataLoader,
+    style_image: torch.Tensor,
+    instance_norm: bool = False,
+    hyper_parameters: Optional[HyperParameters] = None,
+    quiet: bool = False,
+    logger: Optional[optim.OptimLogger] = None,
+    log_fn: Optional[
+        Callable[[int, Union[torch.Tensor, pystiche.LossDict], float, float], None]
+    ] = None,
+) -> nn.Module:
+
+    device = misc.get_device()
+
+    if hyper_parameters is None:
+        hyper_parameters = _hyper_parameters()
+
+    transformer = MSTTransformer(in_channels=1, instance_norm=instance_norm)
+    transformer = transformer.train().to(device)
+
+    criterion = perceptual_loss(hyper_parameters=hyper_parameters)
+    criterion = criterion.eval().to(device)
+
+    optimizer = _optimizer(transformer)
+
+    style_transform = _style_transform(hyper_parameters=hyper_parameters)
+    style_transform = style_transform.to(device)
+    style_image = style_transform(style_image)
+    criterion.set_style_image(grayscale_to_fakegrayscale(style_image))
+
+    def criterion_update_fn(input_image: torch.Tensor, criterion: nn.Module) -> None:
+        cast(loss.PerceptualLoss, criterion).set_content_image(
+            grayscale_to_fakegrayscale(input_image)
+        )
+
+    return optim.default_transformer_optim_loop(
+        content_image_loader,
+        transformer,
+        criterion,
+        criterion_update_fn,
+        optimizer=optimizer,
+        quiet=quiet,
+        logger=logger,
+        log_fn=log_fn,
+    )
+
+
 def mask_training(
-        content_image_loader: DataLoader,
-        style_images_and_guides: Dict[str, Tuple[torch.Tensor, torch.Tensor]],
-        instance_norm: bool = False,
-        hyper_parameters: Optional[HyperParameters] = None,
-        quiet: bool = False,
-        logger: Optional[optim.OptimLogger] = None,
-        log_fn: Optional[
-            Callable[[int, Union[torch.Tensor, pystiche.LossDict], float, float], None]
-        ] = None,
+    content_image_loader: DataLoader,
+    style_images_and_guides: Dict[str, Tuple[torch.Tensor, torch.Tensor]],
+    instance_norm: bool = False,
+    hyper_parameters: Optional[HyperParameters] = None,
+    quiet: bool = False,
+    logger: Optional[optim.OptimLogger] = None,
+    log_fn: Optional[
+        Callable[[int, Union[torch.Tensor, pystiche.LossDict], float, float], None]
+    ] = None,
 ) -> MaskMSTTransformer:
 
     device = misc.get_device()
@@ -102,7 +150,9 @@ def mask_training(
         hyper_parameters = _hyper_parameters()
 
     regions = list(style_images_and_guides.keys())
-    transformer = MaskMSTTransformer(regions, instance_norm=instance_norm, in_channels=1)
+    transformer = MaskMSTTransformer(
+        regions, instance_norm=instance_norm, in_channels=1
+    )
     transformer = transformer.train().to(device)
 
     criterion = guided_perceptual_loss(regions, hyper_parameters=hyper_parameters)
@@ -124,12 +174,21 @@ def mask_training(
         transformer.set_target_guide(guide, region)
         criterion.set_style_guide(region, guide)
 
-
-    def criterion_update_fn(input_image: torch.Tensor, input_guides: Dict[str, torch.Tensor], criterion: FlexibleGuidedPerceptualLoss) -> None:
-        cast(FlexibleGuidedPerceptualLoss, criterion).set_content_image(grayscale_to_fakegrayscale(input_image))
+    def criterion_update_fn(
+        input_image: torch.Tensor,
+        input_guides: Dict[str, torch.Tensor],
+        criterion: FlexibleGuidedPerceptualLoss,
+    ) -> None:
+        cast(FlexibleGuidedPerceptualLoss, criterion).set_content_image(
+            grayscale_to_fakegrayscale(input_image)
+        )
         for region, guide in input_guides.items():
-            cast(FlexibleGuidedPerceptualLoss, criterion).set_content_guide(region, guide)
-        cast(FlexibleGuidedPerceptualLoss, criterion).set_input_regions(list(input_guides.keys()))
+            cast(FlexibleGuidedPerceptualLoss, criterion).set_content_guide(
+                region, guide
+            )
+        cast(FlexibleGuidedPerceptualLoss, criterion).set_input_regions(
+            list(input_guides.keys())
+        )
 
     return default_mask_transformer_optim_loop(
         content_image_loader,
@@ -143,11 +202,10 @@ def mask_training(
     )
 
 
-def mask_stylization(
-        input_image: torch.Tensor,
-        input_guides: Dict[str, torch.Tensor],
-        transformer: MaskMSTTransformer,
-        hyper_parameters: Optional[HyperParameters] = None,
+def stylization(
+    input_image: torch.Tensor,
+    transformer: MSTTransformer,
+    hyper_parameters: Optional[HyperParameters] = None,
 ) -> torch.Tensor:
 
     if hyper_parameters is None:
@@ -157,12 +215,43 @@ def mask_stylization(
     transformer = transformer.eval()
     transformer = transformer.to(device)
 
-
-    if image.extract_num_channels(input_image) == 3 or image.extract_image_size(input_image) != (image_size, image_size):
+    if image.extract_num_channels(input_image) == 3 or image.extract_image_size(
+        input_image
+    ) != (image_size, image_size):
         content_transform = _content_transform(hyper_parameters=hyper_parameters)
         content_transform = content_transform.to(device)
 
-        content_mask_transform = _content_mask_transform(hyper_parameters=hyper_parameters)
+        input_image = content_transform(input_image)
+
+    with torch.no_grad():
+        output_image = transformer(input_image)
+
+    return cast(torch.Tensor, output_image).detach()
+
+
+def mask_stylization(
+    input_image: torch.Tensor,
+    input_guides: Dict[str, torch.Tensor],
+    transformer: MaskMSTTransformer,
+    hyper_parameters: Optional[HyperParameters] = None,
+) -> torch.Tensor:
+
+    if hyper_parameters is None:
+        hyper_parameters = _hyper_parameters()
+    image_size = hyper_parameters.content_transform.image_size
+    device = input_image.device
+    transformer = transformer.eval()
+    transformer = transformer.to(device)
+
+    if image.extract_num_channels(input_image) == 3 or image.extract_image_size(
+        input_image
+    ) != (image_size, image_size):
+        content_transform = _content_transform(hyper_parameters=hyper_parameters)
+        content_transform = content_transform.to(device)
+
+        content_mask_transform = _content_mask_transform(
+            hyper_parameters=hyper_parameters
+        )
         content_mask_transform = content_mask_transform.to(device)
         input_image = content_transform(input_image)
         for name, guide in input_guides.items():
