@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from pystiche.data import LocalImage, LocalImageCollection
+from pystiche.data import LocalImage, LocalImageCollection, ImageFolderDataset
 from pystiche.image import transforms, read_image, read_guides
 from pystiche.image.utils import extract_num_channels
 from pystiche_papers.utils import HyperParameters
@@ -24,6 +24,7 @@ __all__ = [
     "style_mask_transform",
     "images",
     "dataset",
+    "mask_dataset",
     "batch_sampler",
     "image_loader",
 ]
@@ -212,7 +213,14 @@ class GuidesImageFolderDataset(Dataset):
         return image, guides
 
 
-def dataset(root: str, transform: Optional[nn.Module] = None, mask_transform: Optional[nn.Module] = None,) -> GuidesImageFolderDataset:
+def dataset(root: str, transform: Optional[nn.Module] = None) -> ImageFolderDataset:
+    if transform is None:
+        transform = content_transform()
+
+    return ImageFolderDataset(root, transform=transform)
+
+
+def mask_dataset(root: str, transform: Optional[nn.Module] = None, mask_transform: Optional[nn.Module] = None,) -> GuidesImageFolderDataset:
     if transform is None:
         transform = content_transform()
 

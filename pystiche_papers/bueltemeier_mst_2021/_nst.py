@@ -20,7 +20,7 @@ from ._utils import hyper_parameters as _hyper_parameters
 from ._transformer import MaskMSTTransformer
 from ._loss import guided_perceptual_loss, FlexibleGuidedPerceptualLoss
 
-__all__ = ["default_mask_transformer_optim_loop", "training", "stylization"]
+__all__ = ["default_mask_transformer_optim_loop", "mask_training", "mask_stylization"]
 
 
 def default_mask_transformer_optim_loop(
@@ -84,7 +84,7 @@ def default_mask_transformer_optim_loop(
     return transformer
 
 
-def training(
+def mask_training(
         content_image_loader: DataLoader,
         style_images_and_guides: Dict[str, Tuple[torch.Tensor, torch.Tensor]],
         instance_norm: bool = False,
@@ -143,7 +143,7 @@ def training(
     )
 
 
-def stylization(
+def mask_stylization(
         input_image: torch.Tensor,
         input_guides: Dict[str, torch.Tensor],
         transformer: MaskMSTTransformer,
