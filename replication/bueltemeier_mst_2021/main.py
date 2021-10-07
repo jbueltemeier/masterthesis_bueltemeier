@@ -67,7 +67,7 @@ def training(args):
 
     images = paper.images(args.image_source_dir)
     if args.masked:
-        style_images_and_guides = get_style_images_and_guides(images, image_size, styles)
+        style_images_and_guides = get_style_images_and_guides(images, image_size, styles, args)
         dataset = paper.mask_dataset(path.join(args.dataset_dir),)
         image_loader = paper.image_loader(
             dataset, pin_memory=str(args.device).startswith("cuda"),
@@ -159,7 +159,7 @@ def parse_input():
     model_dir = None
     device = None
     instance_norm = True
-    masked = False
+    masked = True
     quiet = False
 
     def process_dir(dir):
