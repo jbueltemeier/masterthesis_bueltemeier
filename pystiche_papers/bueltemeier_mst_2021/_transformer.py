@@ -194,7 +194,10 @@ class MSTTransformer(ConvertTransformer):
         self.register_buffer(f"_target_repr", target_repr, persistent=False)
         self.inspiration.setTarget(target_repr)
 
-    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+    def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
+        # Update target enc during training due to changing encoder
+        if recalc_enc and self.has_target_image(region):
+            self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
         converted_enc = self.inspiration(enc)
         return self._bottleneck(converted_enc)
 
@@ -221,6 +224,9 @@ class MaskMSTTransformer(RegionConvertTransformer):
         target_repr = pystiche.gram_matrix(enc)
         self.register_buffer(f"{region}_target_repr", target_repr, persistent=False)
 
-    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
+    def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
+        # Update target enc during training due to changing encoder
+        if recalc_enc and self.has_target_image(region):
+            self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
         self.inspiration.setTarget(getattr(self, f"{region}_target_repr"))
         return self.inspiration(enc)
