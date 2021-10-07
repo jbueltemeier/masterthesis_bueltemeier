@@ -6,6 +6,7 @@ import torch
 import pystiche
 from pystiche import enc
 from pystiche_papers.bueltemeier_mst_2021._modules import Inspiration, SequentialDecoder, encoder, decoder, bottleneck
+from pystiche.image.transforms.functional import grayscale_to_fakegrayscale
 
 __all__ = [
     "_Transformer",
@@ -79,7 +80,10 @@ class ConvertTransformer(_ConvertTransformer):
     def process_input_image(self, image: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         input_repr = self.input_enc_to_repr(self.input_image_to_enc(image))
         converted_enc = self.convert(input_repr)
-        return self.enc_to_output_image(converted_enc)
+        output_image = self.enc_to_output_image(converted_enc)
+        if pystiche.image.extract_num_channels(output_image) == 1:
+            output_image = grayscale_to_fakegrayscale(output_image)
+        return output_image
 
     @abstractmethod
     def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
