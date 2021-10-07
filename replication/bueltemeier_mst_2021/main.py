@@ -14,7 +14,7 @@ def read_image_and_guides(image, **read_kwargs):
     )
 
 
-def get_style_images_and_guides(images, image_size, styles):
+def get_style_images_and_guides(images, image_size, styles, args):
     style = "MAD_20_2005"
     style_images = {
         style: read_image_and_guides(images[style], device=args.device, size=image_size)
@@ -90,7 +90,7 @@ def training(args):
         iter_loader = iter(image_loader)
         for i in range(10):
             content_image, content_guides = next(iter_loader)
-            output_image = paper.stylization(content_image, content_guides, transformer)
+            output_image = paper.mask_stylization(content_image, content_guides, transformer)
             output_name = f"intaglio_mask_random_content_{i}"
             if args.instance_norm:
                 output_name += "__instance_norm"
@@ -101,14 +101,54 @@ def training(args):
             content_image, content_guides = read_image_and_guides(
                 images[content], device=args.device, size=image_size
             )
-            output_image = paper.stylization(content_image, content_guides, transformer)
+            output_image = paper.mask_stylization(content_image, content_guides, transformer)
             output_name = f"intaglio_mask_{content}"
             if args.instance_norm:
                 output_name += "__instance_norm"
             output_file = path.join(args.image_results_dir, f"{output_name}.png")
             image.write_image(output_image, output_file)
     else:
-        pass
+        style = "MAD_20_2005"
+        style_image = images[style].read(size=image_size, device=args.device)
+        dataset = paper.dataset(path.join(args.dataset_dir),)
+        image_loader = paper.image_loader(
+            dataset, pin_memory=str(args.device).startswith("cuda"),
+        )
+
+        transformer = paper.training(
+            image_loader,
+            style_image,
+            instance_norm=args.instance_norm,
+            quiet=args.quiet,
+            logger=args.logger,
+        )
+
+        model_name = f"bueltemeier_2021__intaglio"
+        if args.instance_norm:
+            model_name += "__instance_norm"
+        utils.save_state_dict(transformer, model_name, root=args.model_dir)
+
+        # stylise some images from dataset
+        iter_loader = iter(image_loader)
+        for i in range(10):
+            content_image, content_guides = next(iter_loader)
+            output_image = paper.stylization(content_image, content_guides, transformer)
+            output_name = f"intaglio_random_content_{i}"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            image.write_image(output_image, output_file)
+
+        for content in contents:
+            content_image, content_guides = read_image_and_guides(
+                images[content], device=args.device, size=image_size
+            )
+            output_image = paper.stylization(content_image, content_guides, transformer)
+            output_name = f"intaglio_{content}"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            image.write_image(output_image, output_file)
 
 
 def parse_input():
@@ -119,7 +159,7 @@ def parse_input():
     model_dir = None
     device = None
     instance_norm = True
-    masked = True
+    masked = False
     quiet = False
 
     def process_dir(dir):

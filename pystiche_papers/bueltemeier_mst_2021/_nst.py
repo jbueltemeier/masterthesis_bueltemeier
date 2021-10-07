@@ -19,7 +19,12 @@ from ._utils import hyper_parameters as _hyper_parameters
 from ._transformer import MSTTransformer, MaskMSTTransformer
 from ._loss import perceptual_loss, guided_perceptual_loss, FlexibleGuidedPerceptualLoss
 
-__all__ = ["default_mask_transformer_optim_loop", "mask_training", "mask_stylization"]
+__all__ = [
+    "default_mask_transformer_optim_loop",
+    "training",
+    "mask_training",
+    "stylization",
+    "mask_stylization"]
 
 
 def default_mask_transformer_optim_loop(
@@ -113,6 +118,7 @@ def training(
     style_transform = _style_transform(hyper_parameters=hyper_parameters)
     style_transform = style_transform.to(device)
     style_image = style_transform(style_image)
+    transformer.set_target_image(style_image)
     criterion.set_style_image(grayscale_to_fakegrayscale(style_image))
 
     def criterion_update_fn(input_image: torch.Tensor, criterion: nn.Module) -> None:
