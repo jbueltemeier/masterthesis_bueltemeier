@@ -34,6 +34,20 @@ def content_loss(
     )
 
 
+class GramOperator(ops.GramOperator):
+    @staticmethod
+    def apply_guide(image: torch.Tensor, guide: torch.Tensor) -> torch.Tensor:
+        r"""Apply a guide to an image.
+
+        Args:
+            image: Image of shape :math:`B \times C \times H \times W`.
+            guide: Guide of shape :math:`1 \times 1 \times H \times W`.
+        """
+        image = image * guide
+        mask_weight = 1 / torch.sum(guide)
+        return image * mask_weight
+
+
 def style_loss(
     multi_layer_encoder: Optional[enc.MultiLayerEncoder] = None,
     hyper_parameters: Optional[HyperParameters] = None,
@@ -44,7 +58,7 @@ def style_loss(
         hyper_parameters = _hyper_parameters()
 
     def get_encoding_op(encoder: enc.Encoder, layer_weight: float) -> ops.GramOperator:
-        return ops.GramOperator(encoder, score_weight=layer_weight)
+        return GramOperator(encoder, score_weight=layer_weight)
 
     return ops.MultiLayerEncodingOperator(
         multi_layer_encoder,
