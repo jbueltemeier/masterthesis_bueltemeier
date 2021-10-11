@@ -131,8 +131,8 @@ def training(args):
         # stylise some images from dataset
         iter_loader = iter(image_loader)
         for i in range(10):
-            content_image, content_guides = next(iter_loader)
-            output_image = paper.stylization(content_image, content_guides, transformer)
+            content_image = next(iter_loader)
+            output_image = paper.stylization(content_image, transformer)
             output_name = f"intaglio_random_content_{i}"
             if args.instance_norm:
                 output_name += "__instance_norm"
@@ -143,7 +143,7 @@ def training(args):
             content_image, content_guides = read_image_and_guides(
                 images[content], device=args.device, size=image_size
             )
-            output_image = paper.stylization(content_image, content_guides, transformer)
+            output_image = paper.stylization(content_image, transformer)
             output_name = f"intaglio_{content}"
             if args.instance_norm:
                 output_name += "__instance_norm"
@@ -159,7 +159,7 @@ def parse_input():
     model_dir = None
     device = None
     instance_norm = True
-    masked = True
+    masked = False
     quiet = False
 
     def process_dir(dir):

@@ -210,7 +210,7 @@ def mask_training(
 
 def stylization(
     input_image: torch.Tensor,
-    transformer: MSTTransformer,
+    transformer: nn.Module,
     hyper_parameters: Optional[HyperParameters] = None,
 ) -> torch.Tensor:
 
