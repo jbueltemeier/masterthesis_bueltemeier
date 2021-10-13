@@ -144,7 +144,9 @@ class _RegionConvertTransformer(_ConvertTransformer):
             image: Image of shape :math:`B \times C \times H \times W`.
             guide: Guide of shape :math:`1 \times 1 \times H \times W`.
         """
-        return image * guide
+        image = image * guide
+        mask_weight = 1 / torch.sum(guide)
+        return image * mask_weight
 
     @abstractmethod
     def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
@@ -225,7 +227,7 @@ class MaskMSTTransformer(RegionConvertTransformer):
     def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
         if self.has_target_guide(region):
             enc = self.apply_guide(enc, getattr(self, f"{region}_target_enc_guide"))
-        target_repr = pystiche.gram_matrix(enc)
+        target_repr = pystiche.gram_matrix(enc, normalize=False)
         self.register_buffer(f"{region}_target_repr", target_repr, persistent=False)
 
     def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
