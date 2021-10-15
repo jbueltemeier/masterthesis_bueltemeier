@@ -77,24 +77,14 @@ def encoder(in_channels=3) -> pystiche.SequentialModule:
         conv_block(in_channels=in_channels, out_channels=32, kernel_size=9,),
         conv_block(in_channels=32, out_channels=64, kernel_size=3, stride=2,),
         conv_block(in_channels=64, out_channels=128, kernel_size=3, stride=2,),
-        residual_block(channels=128),
-        residual_block(channels=128),
-        residual_block(channels=128),
-        residual_block(channels=128),
-        residual_block(channels=128),
     )
     return pystiche.SequentialModule(*modules)
 
 
-def bottleneck(in_channels, expansion=4, n_blocks=6):
+def bottleneck(in_channels, n_blocks=6):
     modules = []
     for i in range(n_blocks):
-        modules += [
-            residual_block(
-                in_channels * expansion,
-                in_channels,
-                )
-        ]
+        modules.append(residual_block(channels=in_channels))
     return nn.Sequential(*modules)
 
 
