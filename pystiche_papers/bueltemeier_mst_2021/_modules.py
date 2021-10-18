@@ -27,12 +27,14 @@ __all__ = [
 
 class MSTSequentialEncoder(enc.SequentialEncoder):
     def propagate_guide(self, guide: torch.Tensor) -> torch.Tensor:
-        for module in self.children():
-            if isinstance(module, ResidualBlock):
-                # TODO: current workaround, implement this properly (conv handling)
-                guide = cast(torch.Tensor, F.max_pool2d(guide, kernel_size=2))
-            else:
-                guide = enc.guides.propagate_guide(module, guide)
+        # for module in self.children():
+        #     if isinstance(module, ResidualBlock) or isinstance(module, nn.Sequential):
+        #         # TODO: current workaround, implement this properly (conv handling)
+        #         guide = cast(torch.Tensor, F.max_pool2d(guide, kernel_size=2))
+        #     else:
+        #         guide = enc.guides.propagate_guide(module, guide)
+        guide = cast(torch.Tensor, F.max_pool2d(guide, kernel_size=2))
+        guide = cast(torch.Tensor, F.max_pool2d(guide, kernel_size=2))
         return guide
 
 

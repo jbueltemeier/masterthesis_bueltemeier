@@ -6,6 +6,7 @@ from torch import nn
 import pystiche
 
 from ..utils import AutoPadConv2d, AutoPadConvTranspose2d, ResidualBlock
+from pystiche_papers.bueltemeier_mst_2021._modules import MSTSequentialEncoder
 
 __all__ = [
     "conv",
@@ -72,13 +73,13 @@ def residual_block(channels: int, inplace: bool = True) -> ResidualBlock:
     return ResidualBlock(residual)
 
 
-def encoder(in_channels=3) -> pystiche.SequentialModule:
+def encoder(in_channels=3) -> MSTSequentialEncoder:
     modules = (
         conv_block(in_channels=in_channels, out_channels=32, kernel_size=9,),
         conv_block(in_channels=32, out_channels=64, kernel_size=3, stride=2,),
         conv_block(in_channels=64, out_channels=128, kernel_size=3, stride=2,),
     )
-    return pystiche.SequentialModule(*modules)
+    return MSTSequentialEncoder(modules)
 
 
 def bottleneck(in_channels, n_blocks=6):

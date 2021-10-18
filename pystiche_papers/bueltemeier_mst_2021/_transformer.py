@@ -213,13 +213,16 @@ class MSTTransformer(ConvertTransformer):
 
 class MaskMSTTransformer(RegionConvertTransformer):
     def __init__(self, regions: Sequence[str], in_channels=3, instance_norm=False) -> None:
-        channels = 64
+        channels = 128
         expansion = 4
-        _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
-        _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
+        # _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
+        # _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
+        _encoder = johnson_encoder(in_channels)
+        _decoder = johnson_decoder(channels, in_channels)
         super().__init__(_encoder, _decoder, regions=regions)
-        self.inspiration = Inspiration(channels * expansion)
-        self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
+        self.inspiration = Inspiration(channels)
+        # self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
+        self._bottleneck = johnson_bottleneck(channels, in_channels)
 
     def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
         inpur_repr = enc
