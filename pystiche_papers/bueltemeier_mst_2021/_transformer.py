@@ -220,7 +220,10 @@ class MaskMSTTransformer(RegionConvertTransformer):
         _encoder = johnson_encoder(in_channels)
         _decoder = johnson_decoder(channels, in_channels)
         super().__init__(_encoder, _decoder, regions=regions)
-        self.inspiration = Inspiration(channels)
+        for region in regions:
+            setattr(self, f"{region}_inspiration", Inspiration(channels))
+
+        # self.inspiration = Inspiration(channels)
         # self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
         self._bottleneck = johnson_bottleneck(channels, in_channels)
 
@@ -240,5 +243,6 @@ class MaskMSTTransformer(RegionConvertTransformer):
         # Update target enc during training due to changing encoder
         if recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
-        self.inspiration.setTarget(getattr(self, f"{region}_target_repr"))
-        return self.inspiration(enc)
+            getattr(self, f"{region}_target_enc_guide")
+        getattr(self, f"{region}_inspiration").setTarget(getattr(self, f"{region}_target_repr"))
+        return getattr(self, f"{region}_inspiration")(enc)

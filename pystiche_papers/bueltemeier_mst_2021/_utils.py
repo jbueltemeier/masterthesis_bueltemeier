@@ -41,7 +41,7 @@ def hyper_parameters() -> HyperParameters:
     style_loss = HyperParameters(
         layers=style_loss_layers,
         layer_weights=compute_layer_weights(style_loss_layers),
-        score_weight=1e6,
+        score_weight=1e3,
     )
 
     return HyperParameters(
