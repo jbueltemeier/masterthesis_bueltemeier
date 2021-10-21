@@ -43,9 +43,7 @@ class GramOperator(ops.GramOperator):
             image: Image of shape :math:`B \times C \times H \times W`.
             guide: Guide of shape :math:`1 \times 1 \times H \times W`.
         """
-        image = image * guide
-        mask_weight = 1 / torch.sum(guide)
-        return image * mask_weight
+        return image * guide
 
 
 def style_loss(
@@ -59,27 +57,6 @@ def style_loss(
 
     def get_encoding_op(encoder: enc.Encoder, layer_weight: float) -> ops.GramOperator:
         return ops.GramOperator(encoder, score_weight=layer_weight)
-
-    return ops.MultiLayerEncodingOperator(
-        multi_layer_encoder,
-        hyper_parameters.style_loss.layers,
-        get_encoding_op,
-        layer_weights=hyper_parameters.style_loss.layer_weights,
-        score_weight=hyper_parameters.style_loss.score_weight,
-    )
-
-
-def mask_style_loss(
-    multi_layer_encoder: Optional[enc.MultiLayerEncoder] = None,
-    hyper_parameters: Optional[HyperParameters] = None,
-) -> ops.MultiLayerEncodingOperator:
-    if multi_layer_encoder is None:
-        multi_layer_encoder = _multi_layer_encoder()
-    if hyper_parameters is None:
-        hyper_parameters = _hyper_parameters()
-
-    def get_encoding_op(encoder: enc.Encoder, layer_weight: float) -> ops.GramOperator:
-        return GramOperator(encoder, score_weight=layer_weight, normalize=False)
 
     return ops.MultiLayerEncodingOperator(
         multi_layer_encoder,
@@ -130,7 +107,7 @@ def guided_style_loss(
         region: str, region_weight: float
     ) -> ops.MultiLayerEncodingOperator:
         hyper_parameters.style_loss.score_weight = region_weight  # type: ignore[union-attr]
-        return mask_style_loss(
+        return style_loss(
             multi_layer_encoder=multi_layer_encoder,
             hyper_parameters=hyper_parameters.new_similar(),  # type: ignore[union-attr]
         )
