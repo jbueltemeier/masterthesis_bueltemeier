@@ -7,9 +7,7 @@ import pystiche
 from pystiche import enc
 from pystiche_papers.bueltemeier_mst_2021._modules import Inspiration, SequentialDecoder, encoder, decoder, bottleneck
 from pystiche.image.transforms.functional import grayscale_to_fakegrayscale
-from pystiche_papers.bueltemeier_mst_2021._modules_johnson_structure import encoder as johnson_encoder
-from pystiche_papers.bueltemeier_mst_2021._modules_johnson_structure import bottleneck as johnson_bottleneck
-from pystiche_papers.bueltemeier_mst_2021._modules_johnson_structure import decoder as johnson_decoder
+
 __all__ = [
     "_Transformer",
     "_ConvertTransformer",
@@ -117,8 +115,8 @@ class _RegionConvertTransformer(_ConvertTransformer):
 
         with torch.no_grad():
             enc_guide = self.encoder.propagate_guide(guide)
-        self.register_buffer(f"{region}_target_guide", guide, persistent=False)
-        self.register_buffer(f"{region}_target_enc_guide", enc_guide, persistent=False)
+        self.register_buffer(f"{region}_target_guide", guide)
+        self.register_buffer(f"{region}_target_enc_guide", enc_guide)
         if recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
 
@@ -129,8 +127,8 @@ class _RegionConvertTransformer(_ConvertTransformer):
     def set_input_guide(self, guide: torch.Tensor, region: str) -> None:
         with torch.no_grad():
             enc_guide = self.encoder.propagate_guide(guide)
-        self.register_buffer(f"{region}_input_guide", guide, persistent=False)
-        self.register_buffer(f"{region}_input_enc_guide", enc_guide, persistent=False)
+        self.register_buffer(f"{region}_input_guide", guide)
+        self.register_buffer(f"{region}_input_enc_guide", enc_guide)
 
     def has_target_guide(self, region: str) -> bool:
         return f"{region}_target_guide" in self._buffers
@@ -186,21 +184,18 @@ class MSTTransformer(ConvertTransformer):
     def __init__(self, in_channels=3, instance_norm=False) -> None:
         channels = 128
         expansion = 4
-        # _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
-        # _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
-        _encoder = johnson_encoder(in_channels)
-        _decoder = johnson_decoder(channels, in_channels)
+        _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
+        _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
         super().__init__(_encoder, _decoder)
         self.inspiration = Inspiration(channels)
-        # self._bottleneck = bottleneck(channels, in_channels)
-        self._bottleneck = johnson_bottleneck(channels, in_channels)
+        self._bottleneck = bottleneck(channels, in_channels)
 
     def input_enc_to_repr(self, enc: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         return enc
 
     def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
         target_repr = pystiche.gram_matrix(enc)
-        self.register_buffer(f"_target_repr", target_repr, persistent=False)
+        self.register_buffer(f"_target_repr", target_repr)
         self.inspiration.setTarget(target_repr)
 
     def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
@@ -215,17 +210,13 @@ class MaskMSTTransformer(RegionConvertTransformer):
     def __init__(self, regions: Sequence[str], in_channels=3, instance_norm=False) -> None:
         channels = 128
         expansion = 4
-        # _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
-        # _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
-        _encoder = johnson_encoder(in_channels)
-        _decoder = johnson_decoder(channels, in_channels)
+        _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
+        _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
         super().__init__(_encoder, _decoder, regions=regions)
         for region in regions:
-            setattr(self, f"{region}_inspiration", Inspiration(channels))
+            setattr(self, f"{region}_inspiration", Inspiration(channels* expansion))
 
-        # self.inspiration = Inspiration(channels)
-        # self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
-        self._bottleneck = johnson_bottleneck(channels, in_channels)
+        self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
 
     def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
         inpur_repr = enc
@@ -237,7 +228,7 @@ class MaskMSTTransformer(RegionConvertTransformer):
         if self.has_target_guide(region):
             enc = self.apply_guide(enc, getattr(self, f"{region}_target_enc_guide"))
         target_repr = pystiche.gram_matrix(enc)
-        self.register_buffer(f"{region}_target_repr", target_repr, persistent=False)
+        self.register_buffer(f"{region}_target_repr", target_repr)
 
     def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
         # Update target enc during training due to changing encoder
