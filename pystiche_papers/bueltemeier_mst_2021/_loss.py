@@ -11,7 +11,7 @@ from ._utils import multi_layer_encoder as _multi_layer_encoder
 
 __all__ = [
     "content_loss",
-    "style_loss",
+    "gram_style_loss",
     "guided_style_loss",
     "perceptual_loss",
     "FlexibleGuidedPerceptualLoss",
@@ -34,19 +34,34 @@ def content_loss(
     )
 
 
-class GramOperator(ops.GramOperator):
-    @staticmethod
-    def apply_guide(image: torch.Tensor, guide: torch.Tensor) -> torch.Tensor:
-        r"""Apply a guide to an image.
+def mrf_style_loss(
+        multi_layer_encoder: Optional[enc.MultiLayerEncoder] = None,
+        hyper_parameters: Optional[HyperParameters] = None,
+) -> ops.MultiLayerEncodingOperator:
+    if multi_layer_encoder is None:
+        multi_layer_encoder = _multi_layer_encoder()
 
-        Args:
-            image: Image of shape :math:`B \times C \times H \times W`.
-            guide: Guide of shape :math:`1 \times 1 \times H \times W`.
-        """
-        return image * guide
+    if hyper_parameters is None:
+        hyper_parameters = _hyper_parameters()
+
+    def get_encoding_op(encoder: enc.Encoder, layer_weight: float) -> ops.MRFOperator:
+        return ops.MRFOperator(
+            encoder,
+            hyper_parameters.mrf_style_loss.patch_size,  # type: ignore[union-attr]
+            stride=hyper_parameters.mrf_style_loss.stride,  # type: ignore[union-attr]
+            score_weight=layer_weight,
+        )
+
+    return ops.MultiLayerEncodingOperator(
+        multi_layer_encoder,
+        hyper_parameters.mrf_style_loss.layers,
+        get_encoding_op,
+        layer_weights=hyper_parameters.mrf_style_loss.layer_weights,
+        score_weight=hyper_parameters.mrf_style_loss.score_weight,
+    )
 
 
-def style_loss(
+def gram_style_loss(
         multi_layer_encoder: Optional[enc.MultiLayerEncoder] = None,
         hyper_parameters: Optional[HyperParameters] = None,
 ) -> ops.MultiLayerEncodingOperator:
@@ -107,7 +122,7 @@ def guided_style_loss(
         region: str, region_weight: float
     ) -> ops.MultiLayerEncodingOperator:
         hyper_parameters.style_loss.score_weight = region_weight  # type: ignore[union-attr]
-        return style_loss(
+        return gram_style_loss(
             multi_layer_encoder=multi_layer_encoder,
             hyper_parameters=hyper_parameters.new_similar(),  # type: ignore[union-attr]
         )
@@ -129,6 +144,37 @@ def perceptual_loss(
 
     if hyper_parameters is None:
         hyper_parameters = _hyper_parameters()
+
+
+        style_losses = []
+    if "gram" in hyper_parameters.loss.modes:
+        style_losses.append(
+            (
+                "gram_loss",
+                gram_style_loss(
+                    multi_layer_encoder=multi_layer_encoder,
+                    hyper_parameters=hyper_parameters,
+                ),
+            )
+        )
+
+    if "mrf" in hyper_parameters.loss.modes:
+        style_losses.append(
+            (
+                "mrf_loss",
+                mrf_style_loss(
+                    multi_layer_encoder=multi_layer_encoder,
+                    hyper_parameters=hyper_parameters,
+                ),
+            )
+        )
+
+
+    style_loss = (
+        ops.OperatorContainer(style_losses)
+        if len(style_losses) != 1
+        else style_losses[0][-1]
+    )
 
     return loss.PerceptualLoss(
         content_loss(
