@@ -180,9 +180,7 @@ def perceptual_loss(
         content_loss(
             multi_layer_encoder=multi_layer_encoder, hyper_parameters=hyper_parameters,
         ),
-        style_loss(
-            multi_layer_encoder=multi_layer_encoder, hyper_parameters=hyper_parameters,
-        ),
+        style_loss,
     )
 
 

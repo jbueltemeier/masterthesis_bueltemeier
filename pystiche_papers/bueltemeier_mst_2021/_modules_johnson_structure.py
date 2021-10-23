@@ -82,7 +82,7 @@ def encoder(in_channels=3) -> MSTSequentialEncoder:
     return MSTSequentialEncoder(modules)
 
 
-def bottleneck(in_channels, n_blocks=6):
+def bottleneck(in_channels, n_blocks=5):
     modules = []
     for i in range(n_blocks):
         modules.append(residual_block(channels=in_channels))
