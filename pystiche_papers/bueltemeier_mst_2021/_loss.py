@@ -75,10 +75,10 @@ def gram_style_loss(
 
     return ops.MultiLayerEncodingOperator(
         multi_layer_encoder,
-        hyper_parameters.style_loss.layers,
+        hyper_parameters.gram_style_loss.layers,
         get_encoding_op,
-        layer_weights=hyper_parameters.style_loss.layer_weights,
-        score_weight=hyper_parameters.style_loss.score_weight,
+        layer_weights=hyper_parameters.gram_style_loss.layer_weights,
+        score_weight=hyper_parameters.gram_style_loss.score_weight,
     )
 
 
@@ -146,7 +146,7 @@ def perceptual_loss(
         hyper_parameters = _hyper_parameters()
 
 
-        style_losses = []
+    style_losses = []
     if "gram" in hyper_parameters.loss.modes:
         style_losses.append(
             (

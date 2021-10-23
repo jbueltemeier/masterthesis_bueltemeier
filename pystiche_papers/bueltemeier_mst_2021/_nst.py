@@ -6,7 +6,7 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torch import nn
 import pystiche
-from pystiche import optim, misc, loss, image
+from pystiche import optim, misc, loss, image, ops
 from pystiche.image.transforms.functional import grayscale_to_fakegrayscale
 
 from pystiche_papers.utils import HyperParameters
@@ -119,7 +119,12 @@ def training(
     style_transform = style_transform.to(device)
     style_image = style_transform(style_image)
     transformer.set_target_image(style_image)
-    criterion.set_style_image(grayscale_to_fakegrayscale(style_image))
+
+    if isinstance(type(criterion.style_loss), ops.OperatorContainer.__class__):
+        for op in criterion.style_loss.operators():
+            op.set_target_image(grayscale_to_fakegrayscale(style_image))
+    else:
+        criterion.set_style_image(grayscale_to_fakegrayscale(style_image))
 
     def criterion_update_fn(input_image: torch.Tensor, criterion: nn.Module) -> None:
         cast(loss.PerceptualLoss, criterion).set_content_image(

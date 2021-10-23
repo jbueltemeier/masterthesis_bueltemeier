@@ -159,7 +159,7 @@ def parse_input():
     model_dir = None
     device = None
     instance_norm = True
-    masked = True
+    masked = False
     quiet = False
 
     def process_dir(dir):
