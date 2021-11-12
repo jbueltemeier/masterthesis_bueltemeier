@@ -57,7 +57,7 @@ for style in styles:
     style_image = transform(style_image)
     # image.show_image(style_image)
 
-    layer = "relu5_1"
+    layer = "relu4_1"
     encoder = multi_layer_encoder.extract_encoder(layer).to(device)
     enc = encoder(style_image)
 
@@ -67,20 +67,20 @@ for style in styles:
     for region in regions:
         guide = encoder.propagate_guide(style_guides[region])
         gram = calculate_gram(apply_guide(enc, guide))
-        gram_results[region] = gram
+        gram_results[region] = gram / torch.sum(guide)
         # plt.imshow(gram.cpu().numpy(), cmap='hot')
         # plt.show()
 
-    # for entry1, entry2 in itertools.combinations(gram_results.items(), 2):
-    #     print(entry1[0])
-    #     print(entry2[0])
-    #     print(calculate_loss(entry1[1], entry2[1]))
+    for entry1, entry2 in itertools.combinations(gram_results.items(), 2):
+        print(entry1[0])
+        print(entry2[0])
+        print(calculate_loss(entry1[1], entry2[1]))
     gram_images[style] = gram_results
 
-compare_regions = ['lips', 'skin', 'hair', 'brows', 'eye']
-for styleA, styleB in itertools.combinations(gram_images.keys(),2):
-    print(styleA)
-    print(styleB)
-    for region in compare_regions:
-        print(region)
-        print(calculate_loss(gram_images[styleA][region], gram_images[styleB][region]))
+# compare_regions = ['lips', 'skin', 'hair', 'brows', 'eye']
+# for styleA, styleB in itertools.combinations(gram_images.keys(),2):
+#     print(styleA)
+#     print(styleB)
+#     for region in compare_regions:
+#         print(region)
+#         print(calculate_loss(gram_images[styleA][region], gram_images[styleB][region]))
