@@ -166,7 +166,7 @@ class RegionConvertTransformer(_RegionConvertTransformer):
             converted_enc.append(transformed_enc)
 
         converted_enc = torch.sum(torch.stack(converted_enc), dim=0)
-        converted_enc = self._bottleneck(converted_enc)
+        # converted_enc = self._bottleneck(converted_enc)
         return self.enc_to_output_image(converted_enc)
 
     @abstractmethod
@@ -186,14 +186,14 @@ class MSTTransformer(ConvertTransformer):
     def __init__(self, in_channels=3, instance_norm=False) -> None:
         channels = 128
         expansion = 4
-        # _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
-        # _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
-        _encoder = johnson_encoder(in_channels)
-        _decoder = johnson_decoder(channels, in_channels)
+        _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
+        _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
+        # _encoder = johnson_encoder(in_channels)
+        # _decoder = johnson_decoder(channels, in_channels)
         super().__init__(_encoder, _decoder)
         self.inspiration = Inspiration(channels)
-        # self._bottleneck = bottleneck(channels, in_channels)
-        self._bottleneck = johnson_bottleneck(channels)
+        self._bottleneck = bottleneck(channels, in_channels)
+        # self._bottleneck = johnson_bottleneck(channels)
 
     def input_enc_to_repr(self, enc: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         return enc
@@ -219,9 +219,9 @@ class MaskMSTTransformer(RegionConvertTransformer):
         _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
         super().__init__(_encoder, _decoder, regions=regions)
         for region in regions:
-            setattr(self, f"{region}_inspiration", Inspiration(channels * expansion))
-
-        self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
+            # setattr(self, f"{region}_inspiration", Inspiration(channels * expansion))
+            setattr(self, f"{region}_bottleneck", bottleneck(channels, expansion=expansion, instance_norm=instance_norm))
+        # self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
 
     def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
         inpur_repr = enc
@@ -239,5 +239,6 @@ class MaskMSTTransformer(RegionConvertTransformer):
         # Update target enc during training due to changing encoder
         if recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
-        getattr(self, f"{region}_inspiration").setTarget(getattr(self, f"{region}_target_repr"))
-        return getattr(self, f"{region}_inspiration")(enc)
+        # getattr(self, f"{region}_inspiration").setTarget(getattr(self, f"{region}_target_repr"))
+        # transformed_enc = getattr(self, f"{region}_inspiration")(enc)
+        return getattr(self, f"{region}_bottleneck")(enc)

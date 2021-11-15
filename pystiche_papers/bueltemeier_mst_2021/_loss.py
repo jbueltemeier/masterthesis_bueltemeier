@@ -1,5 +1,5 @@
 from copy import copy
-from typing import Optional, Sequence, List, Callable, Union
+from typing import Optional, Sequence, List, Callable, Union, Tuple
 
 import torch
 import pystiche
@@ -61,6 +61,33 @@ def mrf_style_loss(
     )
 
 
+class GramOperator(ops.GramOperator):
+    @staticmethod
+    def apply_guide(image: torch.Tensor, guide: torch.Tensor) -> torch.Tensor:
+        r"""Apply a guide to an image.
+
+        Args:
+            image: Image of shape :math:`B \times C \times H \times W`.
+            guide: Guide of shape :math:`1 \times 1 \times H \times W`.
+        """
+        return image * guide
+
+    def target_image_to_repr(self, image: torch.Tensor) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        enc = self.encoder(image)
+        if self.has_target_guide:
+            enc = self.apply_guide(enc, self.target_enc_guide)
+            output = self.target_enc_to_repr(enc)
+            return output[0] / torch.sum(self.target_enc_guide), output[1]
+        return self.target_enc_to_repr(enc)
+
+    def input_image_to_repr(self, image: torch.Tensor, ctx: Optional[torch.Tensor]) -> torch.Tensor:
+        enc = self.encoder(image)
+        if self.has_input_guide:
+            enc = self.apply_guide(enc, self.input_enc_guide)
+            return self.input_enc_to_repr(enc, ctx) / torch.sum(self.input_enc_guide)
+        return self.input_enc_to_repr(enc, ctx)
+
+
 def gram_style_loss(
         multi_layer_encoder: Optional[enc.MultiLayerEncoder] = None,
         hyper_parameters: Optional[HyperParameters] = None,
@@ -71,7 +98,7 @@ def gram_style_loss(
         hyper_parameters = _hyper_parameters()
 
     def get_encoding_op(encoder: enc.Encoder, layer_weight: float) -> ops.GramOperator:
-        return ops.GramOperator(encoder, score_weight=layer_weight)
+        return GramOperator(encoder, score_weight=layer_weight, normalize=False)
 
     return ops.MultiLayerEncodingOperator(
         multi_layer_encoder,
@@ -121,7 +148,7 @@ def guided_style_loss(
     def get_region_op(
         region: str, region_weight: float
     ) -> ops.MultiLayerEncodingOperator:
-        hyper_parameters.style_loss.score_weight = region_weight  # type: ignore[union-attr]
+        hyper_parameters.gram_style_loss.score_weight = region_weight  # type: ignore[union-attr]
         return gram_style_loss(
             multi_layer_encoder=multi_layer_encoder,
             hyper_parameters=hyper_parameters.new_similar(),  # type: ignore[union-attr]

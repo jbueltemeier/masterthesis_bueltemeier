@@ -17,31 +17,31 @@ def read_image_and_guides(image, **read_kwargs):
 def get_style_images_and_guides(images, image_size, styles, args):
     style = "MAD_20_2005"
     style_images = {
-        style: read_image_and_guides(images[style], device=args.device, size=image_size)
+        style: read_image_and_guides(images[style], size=image_size)
         for style in styles
     }
     return {
-        "background": (style_images[style][0], style_images[style][1]["background"]),
-        "skin": (style_images[style][0], style_images[style][1]["skin"]),
-        "nose": (style_images[style][0], style_images[style][1]["nose"]),
+        "background": (style_images[style][0].to(args.device), style_images[style][1]["background"].to(args.device)),
+        "skin": (style_images[style][0].to(args.device), style_images[style][1]["skin"].to(args.device)),
+        "nose": (style_images[style][0].to(args.device), style_images[style][1]["nose"].to(args.device)),
         "glasses": (
-            style_images["LRD_50_2008"][0],
-            style_images["LRD_50_2008"][1]["accessoire"],
+            style_images["LRD_50_2008"][0].to(args.device),
+            style_images["LRD_50_2008"][1]["accessoire"].to(args.device),
         ),
-        "eye": (style_images[style][0], style_images[style][1]["eye"]),
-        "brows": (style_images[style][0], style_images[style][1]["brows"]),
-        "ears": (style_images[style][0], style_images[style][1]["ears"]),
-        "lips": (style_images[style][0], style_images[style][1]["lips"]),
-        "hair": (style_images[style][0], style_images[style][1]["hair"]),
+        "eye": (style_images[style][0].to(args.device), style_images[style][1]["eye"].to(args.device)),
+        "brows": (style_images[style][0].to(args.device), style_images[style][1]["brows"].to(args.device)),
+        "ears": (style_images[style][0].to(args.device), style_images[style][1]["ears"].to(args.device)),
+        "lips": (style_images[style][0].to(args.device), style_images[style][1]["lips"].to(args.device)),
+        "hair": (style_images["Specimen_0_2"][0].to(args.device), style_images["Specimen_0_2"][1]["hair"].to(args.device)),
         "headwear": (
-            style_images["MAD_2000_2002"][0],
-            style_images["MAD_2000_2002"][1]["headwear"],
+            style_images["MAD_2000_2002"][0].to(args.device),
+            style_images["MAD_2000_2002"][1]["headwear"].to(args.device),
         ),
         "accessoire": (
-            style_images["GBP_5_2002"][0],
-            style_images["GBP_5_2002"][1]["accessoire"],
+            style_images["GBP_5_2002"][0].to(args.device),
+            style_images["GBP_5_2002"][1]["accessoire"].to(args.device),
         ),
-        "body": (style_images[style][0], style_images[style][1]["body"]),
+        "body": (style_images[style][0].to(args.device), style_images[style][1]["body"].to(args.device)),
     }
 
 
@@ -88,7 +88,7 @@ def training(args):
 
         # stylise some images from dataset
         iter_loader = iter(image_loader)
-        for i in range(10):
+        for i in range(20):
             content_image, content_guides = next(iter_loader)
             output_image = paper.mask_stylization(content_image, content_guides, transformer)
             output_name = f"intaglio_mask_random_content_{i}"
@@ -130,7 +130,7 @@ def training(args):
 
         # stylise some images from dataset
         iter_loader = iter(image_loader)
-        for i in range(10):
+        for i in range(20):
             content_image = next(iter_loader)
             output_image = paper.stylization(content_image, transformer)
             output_name = f"intaglio_random_content_{i}"
@@ -159,7 +159,7 @@ def parse_input():
     model_dir = None
     device = None
     instance_norm = True
-    masked = False
+    masked = True
     quiet = False
 
     def process_dir(dir):

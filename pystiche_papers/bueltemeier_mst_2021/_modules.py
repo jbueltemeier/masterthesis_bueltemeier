@@ -269,7 +269,7 @@ class Inspiration(nn.Module):
         return self.__class__.__name__ + "(" + "N x " + str(self.C) + ")"
 
 
-def bottleneck(in_channels, expansion=4, instance_norm=False, n_blocks=6):
+def bottleneck(in_channels, expansion=4, instance_norm=False, n_blocks=4):
     modules = []
     for i in range(n_blocks):
         modules += [
