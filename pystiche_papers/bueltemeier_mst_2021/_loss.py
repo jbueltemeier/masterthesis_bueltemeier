@@ -91,6 +91,7 @@ class GramOperator(ops.GramOperator):
 def gram_style_loss(
         multi_layer_encoder: Optional[enc.MultiLayerEncoder] = None,
         hyper_parameters: Optional[HyperParameters] = None,
+        normalize: bool = True,
 ) -> ops.MultiLayerEncodingOperator:
     if multi_layer_encoder is None:
         multi_layer_encoder = _multi_layer_encoder()
@@ -98,7 +99,7 @@ def gram_style_loss(
         hyper_parameters = _hyper_parameters()
 
     def get_encoding_op(encoder: enc.Encoder, layer_weight: float) -> ops.GramOperator:
-        return GramOperator(encoder, score_weight=layer_weight, normalize=False)
+        return GramOperator(encoder, score_weight=layer_weight, normalize=normalize)
 
     return ops.MultiLayerEncodingOperator(
         multi_layer_encoder,
@@ -152,6 +153,7 @@ def guided_style_loss(
         return gram_style_loss(
             multi_layer_encoder=multi_layer_encoder,
             hyper_parameters=hyper_parameters.new_similar(),  # type: ignore[union-attr]
+            normalize=False
         )
 
     return MultiRegionOperator(
