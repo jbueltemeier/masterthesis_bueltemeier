@@ -205,10 +205,10 @@ class MSTTransformer(ConvertTransformer):
 
     def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
         # Update target enc during training due to changing encoder
-        # if recalc_enc and self.has_target_image(region):
-        #     self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
-        # converted_enc = self.inspiration(enc)
-        return self._bottleneck(enc)
+        if recalc_enc and self.has_target_image(region):
+            self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
+        converted_enc = self.inspiration(enc)
+        return self._bottleneck(converted_enc)
 
 
 class MaskMSTTransformer(RegionConvertTransformer):
@@ -219,7 +219,7 @@ class MaskMSTTransformer(RegionConvertTransformer):
         _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
         super().__init__(_encoder, _decoder, regions=regions)
         for region in regions:
-            # setattr(self, f"{region}_inspiration", Inspiration(channels * expansion))
+            setattr(self, f"{region}_inspiration", Inspiration(channels * expansion))
             setattr(self, f"{region}_bottleneck", bottleneck(channels, expansion=expansion, instance_norm=instance_norm))
         # self._bottleneck = bottleneck(channels, expansion=expansion, instance_norm=instance_norm)
 
@@ -231,14 +231,18 @@ class MaskMSTTransformer(RegionConvertTransformer):
 
     def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
         if self.has_target_guide(region):
-            enc = self.apply_guide(enc, getattr(self, f"{region}_target_enc_guide"))
-        target_repr = pystiche.gram_matrix(enc)
-        self.register_buffer(f"{region}_target_repr", target_repr)
+            guide = getattr(self, f"{region}_target_enc_guide")
+            enc = self.apply_guide(enc, guide)
+            target_repr = pystiche.gram_matrix(enc, normalize=False) / torch.sum(guide)
+            self.register_buffer(f"{region}_target_repr", target_repr)
+        else:
+            target_repr = pystiche.gram_matrix(enc)
+            self.register_buffer(f"{region}_target_repr", target_repr)
 
     def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
         # Update target enc during training due to changing encoder
         if recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
-        # getattr(self, f"{region}_inspiration").setTarget(getattr(self, f"{region}_target_repr"))
-        # transformed_enc = getattr(self, f"{region}_inspiration")(enc)
-        return getattr(self, f"{region}_bottleneck")(enc)
+        getattr(self, f"{region}_inspiration").setTarget(getattr(self, f"{region}_target_repr"))
+        transformed_enc = getattr(self, f"{region}_inspiration")(enc)
+        return getattr(self, f"{region}_bottleneck")(transformed_enc)

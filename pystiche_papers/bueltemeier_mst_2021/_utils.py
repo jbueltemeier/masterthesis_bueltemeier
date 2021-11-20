@@ -37,7 +37,7 @@ def compute_layer_weights(
 
 
 def hyper_parameters() -> HyperParameters:
-    style_loss_layers = ("relu1_1", "relu2_1", "relu3_1", "relu4_1", "relu5_1")
+    style_loss_layers = ("relu1_1", "relu2_1", "relu3_1")
     style_loss = HyperParameters(
         layers=style_loss_layers,
         layer_weights=compute_layer_weights(style_loss_layers),
@@ -46,7 +46,7 @@ def hyper_parameters() -> HyperParameters:
 
     return HyperParameters(
         content_loss=HyperParameters(
-            layer="relu4_2",
+            layer="relu3_2",
             score_weight=1e0,
         ),
         gram_style_loss=style_loss,
@@ -61,11 +61,11 @@ def hyper_parameters() -> HyperParameters:
             score_weight=1e-4,
         ),
         content_transform=HyperParameters(
-            image_size=256,
+            image_size=768,
             edge="short"
         ),
         style_transform=HyperParameters(
-            image_size=256,
+            image_size=768,
             edge="short"
         ),
         batch_sampler=HyperParameters(num_iterations=50000, batch_size=1),
