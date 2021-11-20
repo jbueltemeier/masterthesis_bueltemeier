@@ -168,7 +168,7 @@ def parse_input():
                 here, "data", "images", "dataset", "CelebAMask-HQ"
             )
         )
-    dataset_dir = 'C:\\Users\\julia\\Downloads\\CelebAMask-HQ'
+    dataset_dir = '~/datasets/celebamask/CelebAMask-HQ'
     dataset_dir = process_dir(dataset_dir)
 
     return Namespace(
