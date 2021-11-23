@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from pystiche import data
 from pystiche.image import transforms, read_image, read_guides
-from pystiche.image.utils import extract_num_channels
+from pystiche.image.utils import extract_num_channels, extract_edge_size
 from pystiche_papers.utils import HyperParameters
 
 from ..data.utils import RandomNumIterationsBatchSampler
@@ -75,13 +75,11 @@ def style_transform(
     if hyper_parameters is None:
         hyper_parameters = _hyper_parameters()
 
-    image_size = hyper_parameters.style_transform.image_size
     transforms_: List[nn.Module] = [
         transforms.Resize(
-            image_size,
+            hyper_parameters.style_transform.image_size,
             edge=hyper_parameters.style_transform.edge,
         ),
-        transforms.CenterCrop((image_size, image_size)),
         OptionalRGBAToRGB(),
         transforms.RGBToGrayscale(),
     ]
@@ -93,14 +91,13 @@ def style_mask_transform(
 ) -> nn.Sequential:
     if hyper_parameters is None:
         hyper_parameters = _hyper_parameters()
-    image_size = hyper_parameters.style_transform.image_size
+
     transforms_: List[nn.Module] = [
         transforms.Resize(
-            image_size,
+            hyper_parameters.style_transform.image_size,
             edge=hyper_parameters.style_transform.edge,
             interpolation_mode="nearest"
         ),
-        transforms.CenterCrop((image_size, image_size)),
     ]
     return nn.Sequential(*transforms_)
 
