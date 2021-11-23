@@ -17,7 +17,7 @@ __all__ = [
 
 def multi_layer_encoder() -> enc.MultiLayerEncoder:
     return enc.vgg19_multi_layer_encoder(
-        weights="caffe", internal_preprocessing=True, allow_inplace=True
+        framework="caffe", internal_preprocessing=True, allow_inplace=True
     )
 
 
@@ -61,11 +61,11 @@ def hyper_parameters() -> HyperParameters:
             score_weight=1e-4,
         ),
         content_transform=HyperParameters(
-            image_size=768,
+            image_size=256,
             edge="short"
         ),
         style_transform=HyperParameters(
-            image_size=768,
+            image_size=256,
             edge="short"
         ),
         batch_sampler=HyperParameters(num_iterations=50000, batch_size=1),

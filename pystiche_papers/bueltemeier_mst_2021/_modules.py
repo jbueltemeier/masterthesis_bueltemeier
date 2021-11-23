@@ -122,7 +122,7 @@ class ResidualBlock(nn.Module):
         super(ResidualBlock, self).__init__()
         self.downsample = downsample
         if self.downsample is not None:
-            self.residual_layer = nn.Conv2d(
+            self.residual_layer = conv(
                 in_channels, channels * expansion, kernel_size=1, stride=stride
             )
 
@@ -269,7 +269,7 @@ class Inspiration(nn.Module):
         return self.__class__.__name__ + "(" + "N x " + str(self.C) + ")"
 
 
-def bottleneck(in_channels, expansion=4, instance_norm=False, n_blocks=4):
+def bottleneck(in_channels, expansion=4, instance_norm=False, n_blocks=3):
     modules = []
     for i in range(n_blocks):
         modules += [
