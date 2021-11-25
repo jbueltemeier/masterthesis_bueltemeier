@@ -159,7 +159,7 @@ def parse_input():
     model_dir = None
     device = None
     instance_norm = True
-    masked = True
+    masked = False
     quiet = False
 
     def process_dir(dir):
@@ -184,7 +184,7 @@ def parse_input():
             path.join(dataset_path, "CelebAMask-HQ-mask")
             if masked
             else path.join(
-                here, "data", "images", "dataset", "CelebAMask-HQ", "CelebA-HQ-img"
+                dataset_path, "CelebA-HQ-img"
             )
         )
     dataset_dir = process_dir(dataset_dir)
