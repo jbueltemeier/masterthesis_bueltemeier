@@ -14,8 +14,7 @@ def read_image_and_guides(image, **read_kwargs):
     )
 
 
-def get_style_images_and_guides(images, image_size, styles, args):
-    style = "MAD_20_2005"
+def get_style_images_and_guides(style, images, image_size, styles, args):
     style_images = {
         style: read_image_and_guides(images[style], size=image_size)
         for style in styles
@@ -67,7 +66,8 @@ def training(args):
 
     images = paper.images(args.image_source_dir)
     if args.masked:
-        style_images_and_guides = get_style_images_and_guides(images, image_size, styles, args)
+        style = "MAD_20_2005"
+        style_images_and_guides = get_style_images_and_guides(style, images, image_size, styles, args)
         dataset = paper.mask_dataset(path.join(args.dataset_dir),)
         image_loader = paper.image_loader(
             dataset, pin_memory=str(args.device).startswith("cuda"),
@@ -91,7 +91,7 @@ def training(args):
         for i in range(60):
             content_image, content_guides = next(iter_loader)
             output_image = paper.mask_stylization(content_image, content_guides, transformer)
-            output_name = f"intaglio_mask_random_content_{i}"
+            output_name = f"intaglio_mask_random_content_{i}_{style}"
             if args.instance_norm:
                 output_name += "__instance_norm"
             output_file = path.join(args.image_results_dir, f"{output_name}.png")
@@ -133,7 +133,7 @@ def training(args):
         for i in range(60):
             content_image = next(iter_loader)
             output_image = paper.stylization(content_image, transformer)
-            output_name = f"intaglio_random_content_{i}"
+            output_name = f"intaglio_random_content_{i}_{style}"
             if args.instance_norm:
                 output_name += "__instance_norm"
             output_file = path.join(args.image_results_dir, f"{output_name}.png")
@@ -178,10 +178,10 @@ def parse_input():
     image_results_dir = process_dir(image_results_dir)
 
     if dataset_dir is None:
+        # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+        dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
         dataset_dir = (
-            path.join(
-                here, "data", "images", "dataset", "CelebAMask-HQ", "CelebAMask-HQ-mask"
-            )
+            path.join(dataset_path, "CelebAMask-HQ-mask")
             if masked
             else path.join(
                 here, "data", "images", "dataset", "CelebAMask-HQ", "CelebA-HQ-img"
