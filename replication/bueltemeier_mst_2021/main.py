@@ -29,7 +29,8 @@ def get_style_images_and_guides(style, images, image_size, styles, args):
         ),
         "eye": (style_images[style][0].to(args.device), style_images[style][1]["eye"].to(args.device)),
         "brows": (style_images[style][0].to(args.device), style_images[style][1]["brows"].to(args.device)),
-        "ears": (style_images[style][0].to(args.device), style_images[style][1]["ears"].to(args.device)),
+        "ears": (style_images[style][0].to(args.device), style_images[style][1]["ears"].to(args.device))if style not in ["Specimen_0_2",
+        "Specimen_0_2005"] else (style_images["MAD_20_2005"][0].to(args.device), style_images["MAD_20_2005"][1]["eye"].to(args.device)),
         "lips": (style_images[style][0].to(args.device), style_images[style][1]["lips"].to(args.device)),
         "hair": (style_images["Specimen_0_2"][0].to(args.device), style_images["Specimen_0_2"][1]["hair"].to(args.device)),
         "headwear": (
@@ -40,11 +41,11 @@ def get_style_images_and_guides(style, images, image_size, styles, args):
             style_images["GBP_5_2002"][0].to(args.device),
             style_images["GBP_5_2002"][1]["accessoire"].to(args.device),
         ),
-        "body": (style_images[style][0].to(args.device), style_images[style][1]["body"].to(args.device)),
+        "body": (style_images["MAD_20_2005"][0].to(args.device), style_images["MAD_20_2005"][1]["body"].to(args.device)),
     }
 
 
-def training(args):
+def training(args, style):
     image_size = 512
     contents = (
         "bueltemeier",
@@ -66,7 +67,6 @@ def training(args):
 
     images = paper.images(args.image_source_dir)
     if args.masked:
-        style = "MAD_20_2005"
         style_images_and_guides = get_style_images_and_guides(style, images, image_size, styles, args)
         dataset = paper.mask_dataset(path.join(args.dataset_dir),)
         image_loader = paper.image_loader(
@@ -88,7 +88,7 @@ def training(args):
 
         # stylise some images from dataset
         iter_loader = iter(image_loader)
-        for i in range(60):
+        for i in range(1):
             content_image, content_guides = next(iter_loader)
             output_image = paper.mask_stylization(content_image, content_guides, transformer)
             output_name = f"intaglio_mask_random_content_{i}_{style}"
@@ -102,13 +102,12 @@ def training(args):
                 images[content], device=args.device, size=image_size
             )
             output_image = paper.mask_stylization(content_image, content_guides, transformer)
-            output_name = f"intaglio_mask_{content}"
+            output_name = f"intaglio_mask_{content}_{style}"
             if args.instance_norm:
                 output_name += "__instance_norm"
             output_file = path.join(args.image_results_dir, f"{output_name}.png")
             image.write_image(output_image, output_file)
     else:
-        style = "MAD_20_2005"
         style_image = images[style].read(size=image_size, device=args.device)
         dataset = paper.dataset(path.join(args.dataset_dir),)
         image_loader = paper.image_loader(
@@ -130,7 +129,7 @@ def training(args):
 
         # stylise some images from dataset
         iter_loader = iter(image_loader)
-        for i in range(60):
+        for i in range(1):
             content_image = next(iter_loader)
             output_image = paper.stylization(content_image, transformer)
             output_name = f"intaglio_random_content_{i}_{style}"
@@ -144,7 +143,7 @@ def training(args):
                 images[content], device=args.device, size=image_size
             )
             output_image = paper.stylization(content_image, transformer)
-            output_name = f"intaglio_{content}"
+            output_name = f"intaglio_{content}_{style}"
             if args.instance_norm:
                 output_name += "__instance_norm"
             output_file = path.join(args.image_results_dir, f"{output_name}.png")
@@ -159,7 +158,7 @@ def parse_input():
     model_dir = None
     device = None
     instance_norm = True
-    masked = False
+    masked = True
     quiet = False
 
     def process_dir(dir):
@@ -211,4 +210,24 @@ def parse_input():
 
 if __name__ == "__main__":
     args = parse_input()
-    training(args)
+    styles = (
+        "DM_100_1996",
+        "MAD_20_2005",
+        "UHD_20_1997",
+        "Specimen_0_2",
+    )
+
+    for style in styles:
+        for state in (True, False):
+            here = path.dirname(__file__)
+            args.masked = state
+            dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+            # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+            args.dataset_dir = (
+                path.join(dataset_path, "CelebAMask-HQ-mask")
+                if args.masked
+                else path.join(
+                    dataset_path, "CelebA-HQ-img"
+                )
+            )
+            training(args, style)
