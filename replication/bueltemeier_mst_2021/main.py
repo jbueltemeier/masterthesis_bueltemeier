@@ -114,10 +114,15 @@ def training(args, style):
             dataset, pin_memory=str(args.device).startswith("cuda"),
         )
 
+        hyper_parameters = paper.hyper_parameters()
+
+        hyper_parameters.gram_style_loss.score_weight = 1e2
+
         transformer = paper.training(
             image_loader,
             style_image,
             instance_norm=args.instance_norm,
+            hyper_parameters=hyper_parameters,
             quiet=args.quiet,
             logger=args.logger,
         )
@@ -177,8 +182,8 @@ def parse_input():
     image_results_dir = process_dir(image_results_dir)
 
     if dataset_dir is None:
-        # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
-        dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+        dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+        # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
         dataset_dir = (
             path.join(dataset_path, "CelebAMask-HQ-mask")
             if masked
@@ -214,15 +219,15 @@ if __name__ == "__main__":
         "DM_100_1996",
         "MAD_20_2005",
         "UHD_20_1997",
-        "Specimen_0_2",
+        # "Specimen_0_2",
     )
 
     for style in styles:
         for state in (True, False):
             here = path.dirname(__file__)
             args.masked = state
-            dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
-            # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+            # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+            dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
             args.dataset_dir = (
                 path.join(dataset_path, "CelebAMask-HQ-mask")
                 if args.masked
