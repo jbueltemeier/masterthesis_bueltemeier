@@ -187,7 +187,7 @@ class MSTTransformer(ConvertTransformer):
         channels = 32
         expansion = 4
         _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
-        _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
+        _decoder = decoder(channels, out_channels=in_channels, expansion=expansion, instance_norm=instance_norm)
         # _encoder = johnson_encoder(in_channels)
         # _decoder = johnson_decoder(channels, in_channels)
         super().__init__(_encoder, _decoder)
@@ -199,7 +199,7 @@ class MSTTransformer(ConvertTransformer):
         return enc
 
     def target_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> None:
-        target_repr = pystiche.gram_matrix(enc)
+        target_repr = pystiche.gram_matrix(enc, normalize=True)
         self.register_buffer(f"_target_repr", target_repr)
         self.inspiration.setTarget(target_repr)
 
@@ -216,7 +216,7 @@ class MaskMSTTransformer(RegionConvertTransformer):
         channels = 32
         expansion = 4
         _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
-        _decoder = decoder(channels, out_channels=in_channels, instance_norm=instance_norm)
+        _decoder = decoder(channels, out_channels=in_channels, expansion=expansion, instance_norm=instance_norm)
         super().__init__(_encoder, _decoder, regions=regions)
         for region in regions:
             setattr(self, f"{region}_inspiration", Inspiration(channels * expansion))
@@ -236,7 +236,7 @@ class MaskMSTTransformer(RegionConvertTransformer):
             target_repr = pystiche.gram_matrix(enc, normalize=False) / torch.sum(guide)
             self.register_buffer(f"{region}_target_repr", target_repr)
         else:
-            target_repr = pystiche.gram_matrix(enc)
+            target_repr = pystiche.gram_matrix(enc, normalize=True)
             self.register_buffer(f"{region}_target_repr", target_repr)
 
     def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
