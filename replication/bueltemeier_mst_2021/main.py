@@ -88,7 +88,7 @@ def training(args, style):
 
         # stylise some images from dataset
         iter_loader = iter(image_loader)
-        for i in range(20):
+        for i in range(40):
             content_image, content_guides = next(iter_loader)
             output_image = paper.mask_stylization(content_image, content_guides, transformer)
             output_name = f"intaglio_mask_random_content_{i}_{style}"
@@ -134,7 +134,7 @@ def training(args, style):
 
         # stylise some images from dataset
         iter_loader = iter(image_loader)
-        for i in range(20):
+        for i in range(40):
             content_image = next(iter_loader)
             output_image = paper.stylization(content_image, transformer)
             output_name = f"intaglio_random_content_{i}_{style}"
