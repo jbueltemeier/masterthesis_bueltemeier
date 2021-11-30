@@ -91,15 +91,16 @@ def conv_block(
     inplace: bool = True,
     instance_norm: bool = False,
 ) -> nn.Sequential:
-    modules: List[nn.Module] = [
-        norm(in_channels, instance_norm),
-        nn.ReLU(inplace=inplace),
-    ]
+    modules: List[nn.Module] = []
     if upsample:
         modules += [upsample_block(scale_factor=upsample)]
 
     modules += [
         conv(in_channels, out_channels, kernel_size, stride=stride, padding=padding)
+    ]
+    modules += [
+        norm(out_channels, instance_norm),
+        nn.ReLU(inplace=inplace),
     ]
     return nn.Sequential(*modules)
 
