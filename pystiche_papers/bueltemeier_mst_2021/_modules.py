@@ -301,6 +301,6 @@ def decoder(in_channels, out_channels=3, expansion=4, instance_norm=False):
             expansion=expansion,
             instance_norm=instance_norm,
         ),
-        conv_block(16 * expansion, out_channels, kernel_size=7, stride=1, instance_norm=instance_norm),
+        conv(16 * expansion, out_channels, kernel_size=7, stride=1),
     ]
     return SequentialDecoder(*modules)
