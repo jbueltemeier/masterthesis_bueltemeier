@@ -131,9 +131,8 @@ class ResidualBlock(nn.Module):
             conv_block(
                 in_channels,
                 channels,
-                kernel_size=1,
+                kernel_size=3,
                 stride=1,
-                padding=0,
                 instance_norm=instance_norm,
             ),
             conv_block(
@@ -146,9 +145,8 @@ class ResidualBlock(nn.Module):
             conv_block(
                 channels,
                 channels * expansion,
-                kernel_size=1,
+                kernel_size=3,
                 stride=1,
-                padding=0,
                 instance_norm=instance_norm,
             ),
         ]
@@ -183,9 +181,8 @@ class UpResidualBlock(nn.Module):
             conv_block(
                 in_channels,
                 channels,
-                kernel_size=1,
+                kernel_size=3,
                 stride=1,
-                padding=0,
                 instance_norm=instance_norm,
             ),
             conv_block(
@@ -199,9 +196,8 @@ class UpResidualBlock(nn.Module):
             conv_block(
                 channels,
                 channels * expansion,
-                kernel_size=1,
+                kernel_size=3,
                 stride=1,
-                padding=0,
                 instance_norm=instance_norm,
             ),
         ]
