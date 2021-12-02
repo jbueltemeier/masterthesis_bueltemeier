@@ -6,43 +6,7 @@ import pystiche_papers.bueltemeier_mst_2021 as paper
 from pystiche import image, misc, optim
 from pystiche_papers import utils
 
-
-def read_image_and_guides(image, **read_kwargs):
-    return (
-        image.read(**read_kwargs),
-        image.guides.read(interpolation_mode="nearest", **read_kwargs),
-    )
-
-
-def get_style_images_and_guides(style, images, image_size, styles, args):
-    style_images = {
-        style: read_image_and_guides(images[style], size=image_size)
-        for style in styles
-    }
-    return {
-        "background": (style_images[style][0].to(args.device), style_images[style][1]["background"].to(args.device)),
-        "skin": (style_images[style][0].to(args.device), style_images[style][1]["skin"].to(args.device)),
-        "nose": (style_images[style][0].to(args.device), style_images[style][1]["nose"].to(args.device)),
-        "glasses": (
-            style_images["LRD_50_2008"][0].to(args.device),
-            style_images["LRD_50_2008"][1]["accessoire"].to(args.device),
-        ),
-        "eye": (style_images[style][0].to(args.device), style_images[style][1]["eye"].to(args.device)),
-        "brows": (style_images[style][0].to(args.device), style_images[style][1]["brows"].to(args.device)),
-        "ears": (style_images[style][0].to(args.device), style_images[style][1]["ears"].to(args.device))if style not in ["Specimen_0_2",
-        "Specimen_0_2005"] else (style_images["MAD_20_2005"][0].to(args.device), style_images["MAD_20_2005"][1]["eye"].to(args.device)),
-        "lips": (style_images[style][0].to(args.device), style_images[style][1]["lips"].to(args.device)),
-        "hair": (style_images["Specimen_0_2"][0].to(args.device), style_images["Specimen_0_2"][1]["hair"].to(args.device)),
-        "headwear": (
-            style_images["MAD_2000_2002"][0].to(args.device),
-            style_images["MAD_2000_2002"][1]["headwear"].to(args.device),
-        ),
-        "accessoire": (
-            style_images["GBP_5_2002"][0].to(args.device),
-            style_images["GBP_5_2002"][1]["accessoire"].to(args.device),
-        ),
-        "body": (style_images["MAD_20_2005"][0].to(args.device), style_images["MAD_20_2005"][1]["body"].to(args.device)),
-    }
+from utils import get_style_images_and_guides, read_image_and_guides
 
 
 def training(args, style):
@@ -51,7 +15,7 @@ def training(args, style):
         "bueltemeier",
         "doerksen",
         # "lohweg",    TODO: beard
-        "schaede",
+        # "schaede",
     )
     styles = (
         "DM_100_1996",
@@ -81,7 +45,7 @@ def training(args, style):
             logger=args.logger,
         )
 
-        model_name = f"bueltemeier_2021__mask__intaglio"
+        model_name = f"bueltemeier_2021__mask__{style}__intaglio"
         if args.instance_norm:
             model_name += "__instance_norm"
         utils.save_state_dict(transformer, model_name, root=args.model_dir)
@@ -116,7 +80,7 @@ def training(args, style):
 
         hyper_parameters = paper.hyper_parameters()
 
-        hyper_parameters.gram_style_loss.score_weight = 1e2
+        hyper_parameters.gram_style_loss.score_weight = 5e1
 
         transformer = paper.training(
             image_loader,
@@ -127,7 +91,7 @@ def training(args, style):
             logger=args.logger,
         )
 
-        model_name = f"bueltemeier_2021__intaglio"
+        model_name = f"bueltemeier_2021__{style}__intaglio"
         if args.instance_norm:
             model_name += "__instance_norm"
         utils.save_state_dict(transformer, model_name, root=args.model_dir)

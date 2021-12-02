@@ -68,6 +68,6 @@ def hyper_parameters() -> HyperParameters:
             image_size=512,
             edge="short"
         ),
-        batch_sampler=HyperParameters(num_iterations=30000, batch_size=1),
+        batch_sampler=HyperParameters(num_iterations=20000, batch_size=1),
         loss=HyperParameters(modes=["gram",]),  # possible modes "gram", "mrf", "gabor"
     )
