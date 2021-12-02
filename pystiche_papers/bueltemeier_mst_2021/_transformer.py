@@ -207,8 +207,8 @@ class MSTTransformer(ConvertTransformer):
         # Update target enc during training due to changing encoder
         if recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
-        # converted_enc = self.inspiration(enc)
-        return self._bottleneck(enc)
+        converted_enc = self.inspiration(enc)
+        return self._bottleneck(converted_enc)
 
 
 class MaskMSTTransformer(RegionConvertTransformer):
@@ -244,5 +244,5 @@ class MaskMSTTransformer(RegionConvertTransformer):
         if recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
         getattr(self, f"{region}_inspiration").setTarget(getattr(self, f"{region}_target_repr"))
-        # transformed_enc = getattr(self, f"{region}_inspiration")(enc)
-        return getattr(self, f"{region}_bottleneck")(enc)
+        transformed_enc = getattr(self, f"{region}_inspiration")(enc)
+        return getattr(self, f"{region}_bottleneck")(transformed_enc)
