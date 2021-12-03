@@ -268,6 +268,11 @@ def mask_stylization(
         for name, guide in input_guides.items():
             input_guides[name] = content_mask_transform(guide)
 
+    if len(input_image.size()) == 3:
+        input_image = input_image.unsqueeze(dim=0)
+        for key, guide in input_guides.items():
+            input_guides[key] = input_guides[key].unsqueeze(dim=0)
+
     with torch.no_grad():
         regions = list(input_guides.keys())
         transformer.set_input_guides(input_guides)

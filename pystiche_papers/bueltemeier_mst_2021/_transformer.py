@@ -183,7 +183,8 @@ class RegionConvertTransformer(_RegionConvertTransformer):
 
 
 class MSTTransformer(ConvertTransformer):
-    def __init__(self, in_channels=3, instance_norm=False) -> None:
+    def __init__(self, in_channels=3, instance_norm=False, recalc_enc: bool = True) -> None:
+        self.recalc_enc = recalc_enc
         channels = 32
         expansion = 4
         _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
@@ -203,16 +204,17 @@ class MSTTransformer(ConvertTransformer):
         self.register_buffer(f"_target_repr", target_repr)
         self.inspiration.setTarget(target_repr)
 
-    def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
+    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
         # Update target enc during training due to changing encoder
-        if recalc_enc and self.has_target_image(region):
+        if self.recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
         converted_enc = self.inspiration(enc)
         return self._bottleneck(converted_enc)
 
 
 class MaskMSTTransformer(RegionConvertTransformer):
-    def __init__(self, regions: Sequence[str], in_channels=3, instance_norm=False) -> None:
+    def __init__(self, regions: Sequence[str], in_channels=3, instance_norm=False, recalc_enc: bool = True) -> None:
+        self.recalc_enc = recalc_enc
         channels = 32
         expansion = 4
         _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
@@ -239,9 +241,9 @@ class MaskMSTTransformer(RegionConvertTransformer):
             target_repr = pystiche.gram_matrix(enc, normalize=True)
             self.register_buffer(f"{region}_target_repr", target_repr)
 
-    def convert(self, enc: torch.Tensor, region: str = "", recalc_enc: bool = True) -> torch.Tensor:
+    def convert(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
         # Update target enc during training due to changing encoder
-        if recalc_enc and self.has_target_image(region):
+        if self.recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
         getattr(self, f"{region}_inspiration").setTarget(getattr(self, f"{region}_target_repr"))
         transformed_enc = getattr(self, f"{region}_inspiration")(enc)

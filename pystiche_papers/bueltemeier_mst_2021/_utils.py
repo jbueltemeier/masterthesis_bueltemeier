@@ -61,11 +61,11 @@ def hyper_parameters() -> HyperParameters:
             score_weight=1e-4,
         ),
         content_transform=HyperParameters(
-            image_size=512,
+            image_size=256,
             edge="short"
         ),
         style_transform=HyperParameters(
-            image_size=512,
+            image_size=256,
             edge="short"
         ),
         batch_sampler=HyperParameters(num_iterations=20000, batch_size=1),
