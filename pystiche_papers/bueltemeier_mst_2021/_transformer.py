@@ -235,7 +235,7 @@ class MaskMSTTransformer(RegionConvertTransformer):
         if self.has_target_guide(region):
             guide = getattr(self, f"{region}_target_enc_guide")
             enc = self.apply_guide(enc, guide)
-            target_repr = pystiche.gram_matrix(enc, normalize=False) / torch.sum(guide)
+            target_repr = pystiche.gram_matrix(enc, normalize=True)
             self.register_buffer(f"{region}_target_repr", target_repr)
         else:
             target_repr = pystiche.gram_matrix(enc, normalize=True)

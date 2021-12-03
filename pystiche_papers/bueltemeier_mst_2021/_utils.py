@@ -61,13 +61,13 @@ def hyper_parameters() -> HyperParameters:
             score_weight=1e-4,
         ),
         content_transform=HyperParameters(
-            image_size=256,
+            image_size=512,
             edge="short"
         ),
         style_transform=HyperParameters(
-            image_size=256,
+            image_size=512,
             edge="short"
         ),
-        batch_sampler=HyperParameters(num_iterations=20000, batch_size=1),
+        batch_sampler=HyperParameters(num_iterations=40000, batch_size=1),
         loss=HyperParameters(modes=["gram",]),  # possible modes "gram", "mrf", "gabor"
     )

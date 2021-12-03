@@ -80,7 +80,7 @@ def training(args, style):
 
         hyper_parameters = paper.hyper_parameters()
 
-        hyper_parameters.gram_style_loss.score_weight = 5e1
+        hyper_parameters.gram_style_loss.score_weight = 1e2
 
         transformer = paper.training(
             image_loader,
