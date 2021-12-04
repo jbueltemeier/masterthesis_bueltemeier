@@ -234,6 +234,9 @@ def stylization(
 
         input_image = content_transform(input_image)
 
+    if len(input_image.size()) == 3:
+        input_image = input_image.unsqueeze(dim=0)
+
     with torch.no_grad():
         output_image = transformer(input_image)
 
