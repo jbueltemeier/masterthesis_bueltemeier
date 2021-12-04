@@ -117,7 +117,7 @@ class _RegionConvertTransformer(_ConvertTransformer):
 
         with torch.no_grad():
             enc_guide = self.encoder.propagate_guide(guide)
-        self.register_buffer(f"{region}_target_guide", guide)
+        self.register_buffer(f"{region}_target_guide", guide, persistent=False)
         self.register_buffer(f"{region}_target_enc_guide", enc_guide)
         if recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
@@ -129,8 +129,8 @@ class _RegionConvertTransformer(_ConvertTransformer):
     def set_input_guide(self, guide: torch.Tensor, region: str) -> None:
         with torch.no_grad():
             enc_guide = self.encoder.propagate_guide(guide)
-        self.register_buffer(f"{region}_input_guide", guide)
-        self.register_buffer(f"{region}_input_enc_guide", enc_guide)
+        self.register_buffer(f"{region}_input_guide", guide, persistent=False)
+        self.register_buffer(f"{region}_input_enc_guide", enc_guide, persistent=False)
 
     def has_target_guide(self, region: str) -> bool:
         return f"{region}_target_guide" in self._buffers
@@ -235,7 +235,7 @@ class MaskMSTTransformer(RegionConvertTransformer):
         if self.has_target_guide(region):
             guide = getattr(self, f"{region}_target_enc_guide")
             enc = self.apply_guide(enc, guide)
-            target_repr = pystiche.gram_matrix(enc, normalize=True)
+            target_repr = pystiche.gram_matrix(enc, normalize=False) / torch.sum(guide)
             self.register_buffer(f"{region}_target_repr", target_repr)
         else:
             target_repr = pystiche.gram_matrix(enc, normalize=True)

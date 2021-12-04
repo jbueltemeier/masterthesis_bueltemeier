@@ -149,6 +149,8 @@ def guided_style_loss(
     def get_region_op(
         region: str, region_weight: float
     ) -> ops.MultiLayerEncodingOperator:
+        if region == "hair":
+            region_weight = 1e1
         hyper_parameters.gram_style_loss.score_weight = region_weight  # type: ignore[union-attr]
         return gram_style_loss(
             multi_layer_encoder=multi_layer_encoder,
