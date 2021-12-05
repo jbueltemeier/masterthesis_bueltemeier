@@ -146,8 +146,8 @@ def parse_input():
     image_results_dir = process_dir(image_results_dir)
 
     if dataset_dir is None:
-        # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
-        dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+        dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+        # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
         dataset_dir = (
             path.join(dataset_path, "CelebAMask-HQ-mask")
             if masked
@@ -183,15 +183,15 @@ if __name__ == "__main__":
         "MAD_20_2005",
         "UHD_20_1997",
         "DM_100_1996",
-        # "Specimen_0_2",
+        "Specimen_0_2",
     )
 
     for style in styles:
         for state in (True,):
             here = path.dirname(__file__)
             args.masked = state
-            dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
-            # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+            # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+            dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
             args.dataset_dir = (
                 path.join(dataset_path, "CelebAMask-HQ-mask")
                 if args.masked

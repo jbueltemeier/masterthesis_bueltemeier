@@ -160,7 +160,7 @@ def parse_input():
 
 if __name__ == "__main__":
     args = parse_input()
-    for state in [True, False]:
+    for state in [False]:
         for device in ['cuda', 'cpu']: # 'cpu'
             here = path.dirname(__file__)
             args.masked = state
