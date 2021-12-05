@@ -217,7 +217,8 @@ def stylization(
     input_image: torch.Tensor,
     transformer: nn.Module,
     hyper_parameters: Optional[HyperParameters] = None,
-) -> torch.Tensor:
+    track_time:bool = False
+) -> Tuple[torch.Tensor, Optional[int]]:
 
     if hyper_parameters is None:
         hyper_parameters = _hyper_parameters()
@@ -226,6 +227,10 @@ def stylization(
     transformer = transformer.eval()
     transformer = transformer.to(device)
 
+    if track_time:
+        start_epoch = time.time()
+    else:
+        execution_time = None
     if image.extract_num_channels(input_image) == 3 or image.extract_image_size(
         input_image
     ) != (image_size, image_size):
@@ -239,8 +244,12 @@ def stylization(
 
     with torch.no_grad():
         output_image = transformer(input_image)
+        if track_time:
+            torch.cuda.synchronize()
+            end_epoch = time.time()
+            execution_time = end_epoch - start_epoch
 
-    return cast(torch.Tensor, output_image).detach()
+    return cast(torch.Tensor, output_image).detach(), execution_time
 
 
 def mask_stylization(
@@ -248,7 +257,8 @@ def mask_stylization(
     input_guides: Dict[str, torch.Tensor],
     transformer: MaskMSTTransformer,
     hyper_parameters: Optional[HyperParameters] = None,
-) -> torch.Tensor:
+    track_time:bool = False
+) -> Tuple[torch.Tensor, Optional[int]]:
 
     if hyper_parameters is None:
         hyper_parameters = _hyper_parameters()
@@ -256,6 +266,11 @@ def mask_stylization(
     device = input_image.device
     transformer = transformer.eval()
     transformer = transformer.to(device)
+
+    if track_time:
+        start_epoch = time.time()
+    else:
+        execution_time = None
 
     if image.extract_num_channels(input_image) == 3 or image.extract_image_size(
         input_image
@@ -281,4 +296,9 @@ def mask_stylization(
         transformer.set_input_guides(input_guides)
         output_image = transformer(input_image, regions)
 
-    return cast(torch.Tensor, output_image).detach()
+        if track_time:
+            torch.cuda.synchronize()
+            end_epoch = time.time()
+            execution_time = end_epoch - start_epoch
+
+    return cast(torch.Tensor, output_image).detach(), execution_time

@@ -117,7 +117,7 @@ class _RegionConvertTransformer(_ConvertTransformer):
 
         with torch.no_grad():
             enc_guide = self.encoder.propagate_guide(guide)
-        self.register_buffer(f"{region}_target_guide", guide, persistent=False)
+        self.register_buffer(f"{region}_target_guide", guide)
         self.register_buffer(f"{region}_target_enc_guide", enc_guide)
         if recalc_enc and self.has_target_image(region):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
