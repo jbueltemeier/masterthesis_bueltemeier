@@ -1,40 +1,68 @@
 import os
 from argparse import Namespace
 from os import path
-import time
+from memory_profiler import profile
 
 import torch
 from pystiche import misc, optim, image
 import pystiche_papers.bueltemeier_mst_2021 as paper
 
+seg_color_map = {
+    'background': (153,153,153),
+    'skin': (152,78,163),
+    'nose': (77,175,74),
+    'glasses': (255,255,255),
+    'eye': (55,126,184),
+    'brows': (247,129,191),
+    'ears': (166,86,40),
+    'lips': (255,255,51),
+    'hair': (255,127,0),
+    'headwear': (166,206,227),
+    'accessoire': (0,0,0),
+    'body': (228,26,28),
+}
 
+@profile
 def main(args):
-    n = 5
+    n = 2
     if args.masked:
-        model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-451a2cf1.pth"
+        # model_name = "bueltemeier_2021__mask__DM_100_1996__intaglio__instance_norm-fccc49fd.pth"
+        # model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-86e4c28e.pth"
+        # model_name = "bueltemeier_2021__mask__Specimen_0_2__intaglio__instance_norm-d6f9b1ff.pth"
+        model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-8ddf3661.pth"
         transformer = load_transformer(args.model_dir, args.instance_norm, model_name)
 
         dataset = paper.mask_dataset(path.join(args.dataset_dir))
         times = []
         for i in range(n):
             content_image, content_guides = dataset.__getitem__(i)
+            content_image = content_image.to(args.device)
+            for key, guide in content_guides.items():
+                content_guides[key] = content_guides[key].to(args.device)
             output_image, excecution_time = paper.mask_stylization(content_image, content_guides, transformer, track_time=True)
 
             if excecution_time is not None:
                 times.append(excecution_time)
 
-            style = model_name.split("__")[1]
+            style = model_name.split("__")[2]
             output_name = f"intaglio_mask_{i}_{style}__{args.device}"
             if args.instance_norm:
                 output_name += "__instance_norm"
             output_file = path.join(args.image_results_dir, f"{output_name}.png")
             image.write_image(output_image, output_file)
+
+            # save segementation image
+            segmentaion_image = image.guides_to_segmentation(content_guides, color_map=seg_color_map)
+            output_file = path.join(args.image_results_dir, f"{output_name}_seg.png")
+            image.write_image(segmentaion_image, output_file)
+
+
         if times:
             times = times[1:] # run all operations once for cuda warm-up -> time error first item
             message = f"{args.device} time: {sum(times) / (n-1)}"
             print(message)
     else:
-        model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-1856e0fa.pth"
+        model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-379670d4.pth"
         transformer = load_transformer(args.model_dir, args.instance_norm, model_name)
         dataset = paper.dataset(path.join(args.dataset_dir))
 
@@ -95,7 +123,6 @@ def load_transformer(model_dir, instance_norm, model_name):
         return None
 
 
-
 def load_local_weights(root, model_name):
     return torch.load(path.join(root, model_name))
 
@@ -123,7 +150,7 @@ def parse_input():
     image_source_dir = process_dir(image_source_dir)
 
     if image_results_dir is None:
-        image_results_dir = path.join(here, "data", "images", "results", "stylization")
+        image_results_dir = path.join(here, "data", "images", "results")
     image_results_dir = process_dir(image_results_dir)
 
     if dataset_dir is None:
@@ -160,8 +187,8 @@ def parse_input():
 
 if __name__ == "__main__":
     args = parse_input()
-    for state in [False]:
-        for device in ['cuda', 'cpu']: # 'cpu'
+    for state in [True]:
+        for device in ['cuda',]: # 'cpu'
             here = path.dirname(__file__)
             args.masked = state
             dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")

@@ -52,7 +52,7 @@ def training(args, style):
 
         # stylise some images from dataset
         iter_loader = iter(image_loader)
-        for i in range(10):
+        for i in range(40):
             content_image, content_guides = next(iter_loader)
             output_image, _ = paper.mask_stylization(content_image, content_guides, transformer)
             output_name = f"intaglio_mask_random_content_{i}_{style}"
@@ -80,7 +80,7 @@ def training(args, style):
 
         hyper_parameters = paper.hyper_parameters()
 
-        hyper_parameters.gram_style_loss.score_weight = 1e2
+        hyper_parameters.gram_style_loss.score_weight = 8e1
 
         transformer = paper.training(
             image_loader,
@@ -98,7 +98,7 @@ def training(args, style):
 
         # stylise some images from dataset
         iter_loader = iter(image_loader)
-        for i in range(10):
+        for i in range(40):
             content_image = next(iter_loader)
             output_image, _ = paper.stylization(content_image, transformer)
             output_name = f"intaglio_random_content_{i}_{style}"
@@ -183,11 +183,11 @@ if __name__ == "__main__":
         "MAD_20_2005",
         "UHD_20_1997",
         "DM_100_1996",
-        "Specimen_0_2",
+        # "Specimen_0_2",
     )
 
     for style in styles:
-        for state in (True,):
+        for state in (True,False):
             here = path.dirname(__file__)
             args.masked = state
             # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
