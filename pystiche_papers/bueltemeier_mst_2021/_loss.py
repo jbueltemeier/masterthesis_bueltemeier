@@ -77,14 +77,14 @@ class GramOperator(ops.GramOperator):
         if self.has_target_guide:
             enc = self.apply_guide(enc, self.target_enc_guide)
             output = self.target_enc_to_repr(enc)
-            return output[0] / torch.sum(self.target_enc_guide), output[1]
+            return output[0] / (torch.sum(self.target_enc_guide) * 128), output[1]
         return self.target_enc_to_repr(enc)
 
     def input_image_to_repr(self, image: torch.Tensor, ctx: Optional[torch.Tensor]) -> torch.Tensor:
         enc = self.encoder(image)
         if self.has_input_guide:
             enc = self.apply_guide(enc, self.input_enc_guide)
-            return self.input_enc_to_repr(enc, ctx) / torch.sum(self.input_enc_guide)
+            return self.input_enc_to_repr(enc, ctx) / (torch.sum(self.input_enc_guide) * 128)
         return self.input_enc_to_repr(enc, ctx)
 
 
