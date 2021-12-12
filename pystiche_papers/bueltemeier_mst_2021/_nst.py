@@ -1,5 +1,6 @@
 import time
 from typing import Callable, Optional, Union, cast, Dict, Tuple
+from memory_profiler import profile
 
 import torch
 from torch.optim.optimizer import Optimizer
@@ -213,6 +214,7 @@ def mask_training(
     )
 
 
+# @profile
 def stylization(
     input_image: torch.Tensor,
     transformer: nn.Module,
@@ -252,6 +254,8 @@ def stylization(
     return cast(torch.Tensor, output_image).detach(), execution_time
 
 
+
+# @profile
 def mask_stylization(
     input_image: torch.Tensor,
     input_guides: Dict[str, torch.Tensor],
