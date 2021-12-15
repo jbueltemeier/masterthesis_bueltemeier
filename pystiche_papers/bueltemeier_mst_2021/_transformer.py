@@ -185,7 +185,7 @@ class RegionConvertTransformer(_RegionConvertTransformer):
 class MSTTransformer(ConvertTransformer):
     def __init__(self, in_channels=3, instance_norm=False, recalc_enc: bool = True) -> None:
         self.recalc_enc = recalc_enc
-        channels = 32
+        channels = 16
         expansion = 4
         _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
         _decoder = decoder(channels, out_channels=in_channels, expansion=expansion, instance_norm=instance_norm)
@@ -215,7 +215,7 @@ class MSTTransformer(ConvertTransformer):
 class MaskMSTTransformer(RegionConvertTransformer):
     def __init__(self, regions: Sequence[str], in_channels=3, instance_norm=False, recalc_enc: bool = True) -> None:
         self.recalc_enc = recalc_enc
-        channels = 32
+        channels = 16
         expansion = 4
         _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
         _decoder = decoder(channels, out_channels=in_channels, expansion=expansion, instance_norm=instance_norm)
