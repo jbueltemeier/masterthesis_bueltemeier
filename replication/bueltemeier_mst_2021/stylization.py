@@ -2,11 +2,19 @@ import os
 from argparse import Namespace
 from os import path
 # from memory_profiler import profile
-
+from torch import nn
 import torch
+from pystiche.image import transforms
 from pystiche import misc, optim, image
 import pystiche_papers.bueltemeier_mst_2021 as paper
 from utils import get_guided_images_from_dataset, image_numbers, crop_image_detail, crop_guides_detail, detail_image_numbers
+
+def content_transform(image_size) -> nn.Sequential:
+    transforms_ = [
+        transforms.Resize(image_size, edge="short"),
+        transforms.CenterCrop((image_size, image_size)),
+    ]
+    return nn.Sequential(*transforms_)
 
 seg_color_map = {
     'background': (153,153,153),
@@ -52,19 +60,34 @@ UHD_20_1997 = {
     "body": (1,1,741,512),
 }
 
+MAD_20_1997 = {
+    "background": (1,1,741,512),
+    "skin": (1,1,741,512),
+    "nose": (1,1,741,512),
+    "glasses": (1,1,684,512),
+    "eye": (1,1,741,512),
+    "brows": (1,1,741,512),
+    "ears": (1,1,741,512),
+    "lips": (1,1,741,512),
+    "hair": (1,1,741,512),
+    "headwear": (1,1,687,512),
+    "accessoire": (1,1,729,512),
+    "body": (1,1,741,512),
+}
+
 def main(args, time_track = False, detail = True, save_segmentation = False):
-    n = 10
+    n = 0
     if args.masked:
 
-        content_image, content_guides = get_guided_images_from_dataset(args, 23620)
-        content_image = crop_image_detail(content_image, (670,770,550,650))
-        content_guides = crop_guides_detail(content_guides, (670,770,550,650))
-        image.show_image(content_image)
+        # content_image, content_guides = get_guided_images_from_dataset(args, 22294)
+        # content_image = crop_image_detail(content_image, (180,280,220,320))
+        # content_guides = crop_guides_detail(content_guides, (180,280,220,320))
+        # image.show_image(content_image)
 
-        # model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
-        model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-25730a04.pth"
+        model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
+        # model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-ba8a81c1.pth"
         transformer = load_transformer(
-            path.join(args.model_dir, "stylization2", "models"), args.instance_norm,
+            path.join(args.model_dir, "stylization"), args.instance_norm,
             model_name)
         #
         # model_name = "bueltemeier_2021__mask__DM_100_1996__intaglio__instance_norm-3c42f459.pth"
@@ -143,15 +166,22 @@ def main(args, time_track = False, detail = True, save_segmentation = False):
                 content_image = crop_image_detail(content_image, detail_position)
                 content_guides = crop_guides_detail(content_guides, detail_position)
                 output_image, _ = paper.mask_stylization(content_image, content_guides, transformer, track_time=time_track)
-                output_name = f"{image_number}_intaglio_mask_detail"
+                regions = ''.join(list(content_guides.keys()))
+                output_name = f"{image_number}_intaglio_detail_{regions}"
                 if args.instance_norm:
                     output_name += "__instance_norm"
-                output_file = path.join(args.image_results_dir, f"{output_name}.png")
+                output_file = path.join(args.image_results_dir, f"{output_name}_mask.png")
                 if "background" in content_guides.keys():
                     output_image = output_image.masked_fill(content_guides["background"] == 1, 1)
                 image.write_image(output_image, output_file)
+
+                transform = content_transform(170)
+
+                output_file = path.join(args.image_results_dir, f"{output_name}_image.png")
+                image.write_image(transform(content_image), output_file)
     else:
-        model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-379670d4.pth"
+        # model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-379670d4.pth"
+        model_name = "bueltemeier_2021__UHD_20_1997__intaglio__instance_norm-514f2403.pth"
         transformer = load_transformer(path.join(args.model_dir, "stylization"),
                                        args.instance_norm, model_name)
         dataset = paper.dataset(path.join(args.dataset_dir))
@@ -195,16 +225,15 @@ def main(args, time_track = False, detail = True, save_segmentation = False):
             for image_number, detail_position in detail_image_numbers:
                 content_image, content_guides = get_guided_images_from_dataset(
                     args, image_number)
+                content_guides = crop_guides_detail(content_guides, detail_position)
                 content_image = crop_image_detail(content_image, detail_position)
                 output_image, _ = paper.stylization(content_image, transformer)
-                output_name = f"{image_number}_intaglio_detail"
+                regions = ''.join(list(content_guides.keys()))
+                output_name = f"{image_number}_intaglio_detail_{regions}"
                 if args.instance_norm:
                     output_name += "__instance_norm"
                 output_file = path.join(args.image_results_dir, f"{output_name}.png")
-                if "background" in content_guides.keys():
-                    output_image = output_image.masked_fill(content_guides["background"] == 1, 1)
                 image.write_image(output_image, output_file)
-
 
 
 def load_transformer(model_dir, instance_norm, model_name):
@@ -317,7 +346,7 @@ def parse_input():
 
 if __name__ == "__main__":
     args = parse_input()
-    for state in [True,]:
+    for state in [True,False]:
         for device in ['cuda',]: # 'cpu'
             here = path.dirname(__file__)
             args.masked = state
