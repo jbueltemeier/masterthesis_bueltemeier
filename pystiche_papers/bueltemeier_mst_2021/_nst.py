@@ -1,6 +1,6 @@
 import time
 from typing import Callable, Optional, Union, cast, Dict, Tuple
-from memory_profiler import profile
+# from memory_profiler import profile
 
 import torch
 from torch.optim.optimizer import Optimizer

@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from ..utils import AutoPadConv2d
 
-from pystiche import enc, core, meta
+from pystiche import enc, core
 
 
 __all__ = [

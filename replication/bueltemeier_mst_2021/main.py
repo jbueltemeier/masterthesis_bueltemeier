@@ -6,14 +6,15 @@ import pystiche_papers.bueltemeier_mst_2021 as paper
 from pystiche import image, misc, optim
 from pystiche_papers import utils
 
-from utils import get_style_images_and_guides, read_image_and_guides
+from utils import get_style_images_and_guides, read_image_and_guides, get_guided_images_from_dataset, image_numbers
+
 
 
 def training(args, style):
     image_size = 512
     contents = (
-        "bueltemeier",
-        "doerksen",
+        # "bueltemeier",
+        # "doerksen",
         # "lohweg",    TODO: beard
         # "schaede",
     )
@@ -50,23 +51,21 @@ def training(args, style):
             model_name += "__instance_norm"
         utils.save_state_dict(transformer, model_name, root=args.model_dir)
 
-        # stylise some images from dataset
-        iter_loader = iter(image_loader)
-        for i in range(50):
-            content_image, content_guides = next(iter_loader)
-            output_image, _ = paper.mask_stylization(content_image, content_guides, transformer)
-            output_name = f"intaglio_mask_random_content_{i}_{style}"
-            if args.instance_norm:
-                output_name += "__instance_norm"
-            output_file = path.join(args.image_results_dir, f"{output_name}.png")
-            image.write_image(output_image, output_file)
-
         for content in contents:
             content_image, content_guides = read_image_and_guides(
                 images[content], device=args.device, size=image_size
             )
             output_image, _ = paper.mask_stylization(content_image, content_guides, transformer)
             output_name = f"intaglio_mask_{content}_{style}"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            image.write_image(output_image, output_file)
+
+        for image_number in image_numbers:
+            content_image, content_guides = get_guided_images_from_dataset(image_number)
+            output_image, _ = paper.mask_stylization(content_image, content_guides, transformer)
+            output_name = f"intaglio_mask_{style}_{image_number}"
             if args.instance_norm:
                 output_name += "__instance_norm"
             output_file = path.join(args.image_results_dir, f"{output_name}.png")
@@ -96,23 +95,21 @@ def training(args, style):
             model_name += "__instance_norm"
         utils.save_state_dict(transformer, model_name, root=args.model_dir)
 
-        # stylise some images from dataset
-        iter_loader = iter(image_loader)
-        for i in range(50):
-            content_image = next(iter_loader)
-            output_image, _ = paper.stylization(content_image, transformer)
-            output_name = f"intaglio_random_content_{i}_{style}"
-            if args.instance_norm:
-                output_name += "__instance_norm"
-            output_file = path.join(args.image_results_dir, f"{output_name}.png")
-            image.write_image(output_image, output_file)
-
         for content in contents:
             content_image, content_guides = read_image_and_guides(
                 images[content], device=args.device, size=image_size
             )
             output_image, _ = paper.stylization(content_image, transformer)
             output_name = f"intaglio_{content}_{style}"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            image.write_image(output_image, output_file)
+
+        for image_number in image_numbers:
+            content_image, content_guides = get_guided_images_from_dataset(image_number)
+            output_image, _ = paper.stylization(content_image, transformer)
+            output_name = f"intaglio_{style}_{image_number}"
             if args.instance_norm:
                 output_name += "__instance_norm"
             output_file = path.join(args.image_results_dir, f"{output_name}.png")

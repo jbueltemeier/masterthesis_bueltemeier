@@ -1,11 +1,12 @@
 import os
 from argparse import Namespace
 from os import path
-from memory_profiler import profile
+# from memory_profiler import profile
 
 import torch
 from pystiche import misc, optim, image
 import pystiche_papers.bueltemeier_mst_2021 as paper
+from utils import get_guided_images_from_dataset, image_numbers
 
 seg_color_map = {
     'background': (153,153,153),
@@ -54,14 +55,23 @@ UHD_20_1997 = {
 def main(args, time_track = False):
     n = 10
     if args.masked:
-        # model_name = "bueltemeier_2021__mask__DM_100_1996__intaglio__instance_norm-fccc49fd.pth"
-        # model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-86e4c28e.pth"
-        # model_name = "bueltemeier_2021__mask__Specimen_0_2__intaglio__instance_norm-d6f9b1ff.pth"
-        model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-8ddf3661.pth"
-        #
-        # model_name = "bueltemeier_2021__mask__DM_100_1996__intaglio__instance_norm-03045821.pth"
         # model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
-        transformer = load_transformer(args.model_dir, args.instance_norm, model_name)
+        model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-25730a04.pth"
+        transformer = load_transformer(
+            path.join(args.model_dir, "stylization2", "models"), args.instance_norm,
+            model_name)
+        #
+        # model_name = "bueltemeier_2021__mask__DM_100_1996__intaglio__instance_norm-3c42f459.pth"
+        # style = model_name.split("__")[2]
+        # transformer2 = load_transformer(path.join(args.model_dir,"stylization2"), args.instance_norm, model_name)
+
+        # model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-8ddf3661.pth"
+        # transformer2 = load_transformer(path.join(args.model_dir,"stylization2"), args.instance_norm, model_name)
+        #
+        # transformer.eye_target_repr = transformer2.eye_target_repr
+        # transformer.eye_target_enc_guide = transformer2.eye_target_enc_guide
+        # transformer.eye_target_image = transformer2.eye_target_image
+        # transformer.eye_bottleneck = transformer2.eye_bottleneck
 
         dataset = paper.mask_dataset(path.join(args.dataset_dir))
         times = []
@@ -92,12 +102,36 @@ def main(args, time_track = False):
             times = times[1:] # run all operations once for cuda warm-up -> time error first item
             message = f"{args.device} time: {sum(times) / (n-1)}"
             print(message)
+
+        for image_number in image_numbers:
+            content_image, content_guides = get_guided_images_from_dataset(image_number)
+            output_image, _ = paper.mask_stylization(content_image, content_guides, transformer, track_time=time_track)
+            # output_image2, _ = paper.mask_stylization(content_image, content_guides, transformer2, track_time=time_track)
+            output_name = f"{image_number}_intaglio_mask"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            # image.write_image(output_image, output_file)
+
+            segmentaion_image = image.guides_to_segmentation(content_guides, color_map=seg_color_map)
+            output_file = path.join(args.image_results_dir, f"{output_name}_seg.png")
+            # image.write_image(segmentaion_image, output_file)
+            output_file = path.join(args.image_results_dir, f"{image_number}_image.png")
+            image.write_image(content_image, output_file)
+
+            output_file = path.join(args.image_results_dir, f"{image_number}_intaglio_background_mask.png")
+            masked_image = output_image.masked_fill(content_guides["background"] == 1,1)
+            image.write_image(masked_image, output_file)
+            #
+            # output_file = path.join(args.image_results_dir, f"{image_number}_intaglio_background_mask.png")
+            # output_image2 = output_image2.masked_fill(content_guides["eye"] != 1,0)
+            # # image.show_image(output_image2)
+            # masked_image[content_guides["eye"] == 1] = output_image2[content_guides["eye"] == 1]
+            # image.write_image(masked_image, output_file)
     else:
-        # model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-379670d4.pth"
-        #
-        # model_name = "bueltemeier_2021__DM_100_1996__intaglio__instance_norm-09995fd0.pth"
-        model_name = "bueltemeier_2021__UHD_20_1997__intaglio__instance_norm-9007c143.pth"
-        transformer = load_transformer(args.model_dir, args.instance_norm, model_name)
+        model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-379670d4.pth"
+        transformer = load_transformer(path.join(args.model_dir, "stylization"),
+                                       args.instance_norm, model_name)
         dataset = paper.dataset(path.join(args.dataset_dir))
 
         times = []
@@ -121,6 +155,19 @@ def main(args, time_track = False):
             message = f"{args.device} time: {sum(times) / (n-1)}"
             print(message)
 
+        for image_number in image_numbers:
+            content_image, content_guides = get_guided_images_from_dataset(image_number)
+            output_image, _ = paper.stylization(content_image, transformer)
+            output_name = f"{image_number}_intaglio"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            # image.write_image(output_image, output_file)
+
+            output_file = path.join(args.image_results_dir, f"{image_number}_intaglio_background.png")
+            masked_image = output_image.masked_fill(content_guides["background"] == 1,1)
+            image.write_image(masked_image, output_file)
+
 
 def load_transformer(model_dir, instance_norm, model_name):
     def load(regions=None):
@@ -136,7 +183,7 @@ def load_transformer(model_dir, instance_norm, model_name):
     for key in state_dict.keys():
         if "target" in key:  # get all trained regions to initialise MaskTransformer
             regions.append(key.split("_")[0])
-        if "target_guide" in key:
+        if "input_guide" in key:
             remove_keys.append(key)
 
     for key in remove_keys:
@@ -156,6 +203,7 @@ def load_transformer(model_dir, instance_norm, model_name):
                         image_size = UHD_20_1997[region]
                         init_image = torch.rand(image_size)
                         init_guide = torch.ones(image_size)
+                        state_dict[f"{region}_target_guide"] = init_guide
                     transformer.set_target_image(init_image, region)
                     transformer.set_target_guide(init_guide, region)
         else:
@@ -231,7 +279,7 @@ def parse_input():
 
 if __name__ == "__main__":
     args = parse_input()
-    for state in [True]:
+    for state in [True,]:
         for device in ['cuda',]: # 'cpu'
             here = path.dirname(__file__)
             args.masked = state
