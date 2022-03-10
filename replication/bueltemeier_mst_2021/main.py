@@ -63,7 +63,7 @@ def training(args, style):
             image.write_image(output_image, output_file)
 
         for image_number in image_numbers:
-            content_image, content_guides = get_guided_images_from_dataset(image_number)
+            content_image, content_guides = get_guided_images_from_dataset(args, image_number)
             output_image, _ = paper.mask_stylization(content_image, content_guides, transformer)
             output_name = f"intaglio_mask_{style}_{image_number}"
             if args.instance_norm:
@@ -107,7 +107,7 @@ def training(args, style):
             image.write_image(output_image, output_file)
 
         for image_number in image_numbers:
-            content_image, content_guides = get_guided_images_from_dataset(image_number)
+            content_image, content_guides = get_guided_images_from_dataset(args, image_number)
             output_image, _ = paper.stylization(content_image, transformer)
             output_name = f"intaglio_{style}_{image_number}"
             if args.instance_norm:

@@ -52,6 +52,12 @@ image_numbers = [22555,23597,23620,23701,24130,24294,24409,24405,24525,24539,246
                  2263,2638,2910,2094,3423,4069,4656,4922,4934,5069,5064,5087,5393,5495,
                  5723,5987,6235,6591,6582,6635,6724,7344,7463,7607,7812,8062,8067,8068]
 
+detail_image_numbers = [(22555,(50,150,200,300)),
+                        (22555, (200,300,200,300)),
+                        (22555, (680,750,100,200)),
+                        (23620, (20,120,220,320)),
+                        (23620, (200,300,200,300)),
+                        (23620, (670,770,550,650))]
 
 def collect_guides(dir: str):
     image_files = [file for file in os.listdir(dir) if is_image_file(file)]
@@ -81,3 +87,16 @@ def get_guided_images_from_dataset(args, image_number):
     complete_image = images["Image"].read(size=768, device=args.device)
     guides = images["Image"].guides.read(size=768, device=args.device)
     return complete_image, guides
+
+
+def crop_image_detail(image, positons):
+    return image[:, :, positons[0]:positons[1], positons[2]:positons[3]]
+
+
+def crop_guides_detail(guides, positons):
+    reduced_guides = {}
+    for name, guide in guides.items():
+        guide = guide[:, :, positons[0]:positons[1], positons[2]:positons[3]]
+        if not guide.sum() == 0:
+            reduced_guides[name] = guide
+    return reduced_guides

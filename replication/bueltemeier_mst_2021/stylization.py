@@ -6,7 +6,7 @@ from os import path
 import torch
 from pystiche import misc, optim, image
 import pystiche_papers.bueltemeier_mst_2021 as paper
-from utils import get_guided_images_from_dataset, image_numbers
+from utils import get_guided_images_from_dataset, image_numbers, crop_image_detail, crop_guides_detail, detail_image_numbers
 
 seg_color_map = {
     'background': (153,153,153),
@@ -52,9 +52,15 @@ UHD_20_1997 = {
     "body": (1,1,741,512),
 }
 
-def main(args, time_track = False):
+def main(args, time_track = False, detail = True, save_segmentation = False):
     n = 10
     if args.masked:
+
+        content_image, content_guides = get_guided_images_from_dataset(args, 23620)
+        content_image = crop_image_detail(content_image, (670,770,550,650))
+        content_guides = crop_guides_detail(content_guides, (670,770,550,650))
+        image.show_image(content_image)
+
         # model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
         model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-25730a04.pth"
         transformer = load_transformer(
@@ -62,7 +68,6 @@ def main(args, time_track = False):
             model_name)
         #
         # model_name = "bueltemeier_2021__mask__DM_100_1996__intaglio__instance_norm-3c42f459.pth"
-        # style = model_name.split("__")[2]
         # transformer2 = load_transformer(path.join(args.model_dir,"stylization2"), args.instance_norm, model_name)
 
         # model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-8ddf3661.pth"
@@ -93,9 +98,10 @@ def main(args, time_track = False):
             image.write_image(output_image, output_file)
 
             # save segementation image
-            segmentaion_image = image.guides_to_segmentation(content_guides, color_map=seg_color_map)
-            output_file = path.join(args.image_results_dir, f"{output_name}_seg.png")
-            image.write_image(segmentaion_image, output_file)
+            if save_segmentation:
+                segmentaion_image = image.guides_to_segmentation(content_guides, color_map=seg_color_map)
+                output_file = path.join(args.image_results_dir, f"{output_name}_seg.png")
+                image.write_image(segmentaion_image, output_file)
 
 
         if times:
@@ -104,7 +110,7 @@ def main(args, time_track = False):
             print(message)
 
         for image_number in image_numbers:
-            content_image, content_guides = get_guided_images_from_dataset(image_number)
+            content_image, content_guides = get_guided_images_from_dataset(args, image_number)
             output_image, _ = paper.mask_stylization(content_image, content_guides, transformer, track_time=time_track)
             # output_image2, _ = paper.mask_stylization(content_image, content_guides, transformer2, track_time=time_track)
             output_name = f"{image_number}_intaglio_mask"
@@ -113,9 +119,11 @@ def main(args, time_track = False):
             output_file = path.join(args.image_results_dir, f"{output_name}.png")
             # image.write_image(output_image, output_file)
 
-            segmentaion_image = image.guides_to_segmentation(content_guides, color_map=seg_color_map)
-            output_file = path.join(args.image_results_dir, f"{output_name}_seg.png")
-            # image.write_image(segmentaion_image, output_file)
+            if save_segmentation:
+                segmentaion_image = image.guides_to_segmentation(content_guides, color_map=seg_color_map)
+                output_file = path.join(args.image_results_dir, f"{output_name}_seg.png")
+                image.write_image(segmentaion_image, output_file)
+
             output_file = path.join(args.image_results_dir, f"{image_number}_image.png")
             image.write_image(content_image, output_file)
 
@@ -128,6 +136,20 @@ def main(args, time_track = False):
             # # image.show_image(output_image2)
             # masked_image[content_guides["eye"] == 1] = output_image2[content_guides["eye"] == 1]
             # image.write_image(masked_image, output_file)
+        if detail:
+            for image_number, detail_position in detail_image_numbers:
+                content_image, content_guides = get_guided_images_from_dataset(
+                    args, image_number)
+                content_image = crop_image_detail(content_image, detail_position)
+                content_guides = crop_guides_detail(content_guides, detail_position)
+                output_image, _ = paper.mask_stylization(content_image, content_guides, transformer, track_time=time_track)
+                output_name = f"{image_number}_intaglio_mask_detail"
+                if args.instance_norm:
+                    output_name += "__instance_norm"
+                output_file = path.join(args.image_results_dir, f"{output_name}.png")
+                if "background" in content_guides.keys():
+                    output_image = output_image.masked_fill(content_guides["background"] == 1, 1)
+                image.write_image(output_image, output_file)
     else:
         model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-379670d4.pth"
         transformer = load_transformer(path.join(args.model_dir, "stylization"),
@@ -156,7 +178,8 @@ def main(args, time_track = False):
             print(message)
 
         for image_number in image_numbers:
-            content_image, content_guides = get_guided_images_from_dataset(image_number)
+            content_image, content_guides = get_guided_images_from_dataset(args, image_number)
+
             output_image, _ = paper.stylization(content_image, transformer)
             output_name = f"{image_number}_intaglio"
             if args.instance_norm:
@@ -167,6 +190,21 @@ def main(args, time_track = False):
             output_file = path.join(args.image_results_dir, f"{image_number}_intaglio_background.png")
             masked_image = output_image.masked_fill(content_guides["background"] == 1,1)
             image.write_image(masked_image, output_file)
+
+        if detail:
+            for image_number, detail_position in detail_image_numbers:
+                content_image, content_guides = get_guided_images_from_dataset(
+                    args, image_number)
+                content_image = crop_image_detail(content_image, detail_position)
+                output_image, _ = paper.stylization(content_image, transformer)
+                output_name = f"{image_number}_intaglio_detail"
+                if args.instance_norm:
+                    output_name += "__instance_norm"
+                output_file = path.join(args.image_results_dir, f"{output_name}.png")
+                if "background" in content_guides.keys():
+                    output_image = output_image.masked_fill(content_guides["background"] == 1, 1)
+                image.write_image(output_image, output_file)
+
 
 
 def load_transformer(model_dir, instance_norm, model_name):
