@@ -38,7 +38,6 @@ def unsupervise(image_loader: Iterable) -> Iterator[torch.Tensor]:
 def default_mask_substyle_transformer_optim_loop(
     image_loader: DataLoader,
     transformer: SubstyleMSTTransformer,
-    regions: List[str],
     criterion: FlexibleGuidedPerceptualLoss,
     criterion_update_fn: Optional[Callable[[torch.Tensor, FlexibleGuidedPerceptualLoss, List[str]], None]],
     optimizer: Optional[Optimizer] = None,
@@ -272,7 +271,6 @@ def substyle_mask_training(
     return default_mask_substyle_transformer_optim_loop(
         content_image_loader,
         transformer,
-        regions,
         criterion,
         criterion_update_fn,
         optimizer=optimizer,
@@ -392,12 +390,11 @@ def stylization(
     return cast(torch.Tensor, output_image).detach(), execution_time
 
 
-
 # @profile
 def mask_stylization(
     input_image: torch.Tensor,
     input_guides: Dict[str, torch.Tensor],
-    transformer: MaskMSTTransformer,
+    transformer: Union[MaskMSTTransformer, SubstyleMSTTransformer],
     hyper_parameters: Optional[HyperParameters] = None,
     track_time:bool = False
 ) -> Tuple[torch.Tensor, Optional[int]]:

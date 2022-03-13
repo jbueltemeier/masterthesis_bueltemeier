@@ -143,10 +143,41 @@ def substyle_masked_training(args, style):
         logger=args.logger,
     )
 
-    model_name = f"bueltemeier_2021__substyles_mask__{style}__intaglio"
+    model_name = f"bueltemeier_2021__substyle_mask__{style}__intaglio"
     if args.instance_norm:
         model_name += "__instance_norm"
     utils.save_state_dict(transformer, model_name, root=args.model_dir)
+
+    for image_number in image_numbers:
+        content_image, content_guides = get_guided_images_from_dataset(args,
+                                                                       image_number)
+        content_regions = content_guides.keys()
+        delete_region = []
+        for region in content_regions:
+            if region not in style_guides.keys():
+                delete_region.append(region)
+
+        for region in delete_region:
+            del content_guides[region]
+        transformer.enable_masked_transfer()
+        output_image, _ = paper.mask_stylization(content_image, content_guides,
+                                                 transformer)
+        output_name = f"intaglio_mask_substyle_{style}_{image_number}"
+        if args.instance_norm:
+            output_name += "__instance_norm"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        image.write_image(output_image, output_file)
+        # create complete image with each substyle
+        transformer.disable_masked_transfer()
+        for region, guide in content_guides.items():
+
+            output_image, _ = paper.mask_stylization(content_image, {region: guide},
+                                                     transformer)
+            output_name = f"intaglio_mask__substyle_{region}_{style}_{image_number}"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            image.write_image(output_image, output_file)
 
 
 
@@ -220,7 +251,7 @@ if __name__ == "__main__":
     )
 
     for style in styles:
-        for state in (True, False):
+        for state in (True, ):
             here = path.dirname(__file__)
             args.masked = state
             dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
