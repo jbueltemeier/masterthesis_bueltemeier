@@ -1,6 +1,9 @@
 from os import path
-
-from pystiche import data
+import os
+from pystiche import data, image
+from PIL import Image, ImageEnhance
+from typing import Dict
+from torchvision.datasets.folder import is_image_file
 
 
 __all__ = [
@@ -120,3 +123,150 @@ def guide_nst_images(root: str):
         ),
     }
     return data.LocalImageCollection({**images_},)
+
+
+def guided_nst_images(local_path):
+    images_ = {
+        "wheatfield_style": data.LocalImage(
+            file=path.join(local_path, "Wheat_Field_with_Cypresses.jpg"),
+            collect_local_guides=True
+        ),
+        "wheatfield": data.LocalImage(
+            file=path.join(local_path, "WheatField.jpg"),
+            collect_local_guides=True
+        ),
+        "starry_night": data.LocalImage(
+            file=path.join(local_path, "starry_night.jpg"),
+            collect_local_guides=True
+        ),
+        "DM": data.LocalImage(
+            file=path.join(local_path, "DM_100_1996.png"),
+            collect_local_guides=True
+        ),
+        "Men": data.LocalImage(
+            file=path.join(local_path, "22555.png"),
+            collect_local_guides=True
+        ),
+    }
+    return data.LocalImageCollection(images_)
+
+
+def create_masked_images(args, image_str: str="Men"):
+    region_map = {
+        "brows": (247, 129, 191),
+        "eye": (55, 126, 184),
+        "nose": (77, 175, 74),
+        "skin": (152, 78, 163),
+        "hair": (255, 127, 0),
+        "body": (228, 26, 28),
+        "ears": (166, 86, 40),
+        "lips": (255, 255, 51),
+        "headwear": (140, 255, 251),
+        "background": (153, 153, 153),
+        "accessoire": (255, 174, 200),
+        "beard": (255, 255, 255),
+    }
+    root = "C:/Users/julia/Desktop/Arbeit/Masterarbeit/Masterarbeit/LaTex-Vorlage/images"
+    local_path = path.join(root, "mask")
+    images = guided_nst_images(local_path)
+    complete_image = images[image_str].read(size=500, device=args.device)
+    guides = images[image_str].guides.read(size=500, device=args.device)
+
+    for region, guide in guides.items():
+        output_image = complete_image * guide
+
+        output_file = path.join(
+            local_path, f"guided_image__{image_str}__{region}.jpg"
+        )
+        image.write_image(output_image, output_file)
+
+    output_image = image.guides_to_segmentation(guides, region_map)
+    output_file = path.join(
+        local_path, f"{image_str}__seg.png"
+    )
+    image.write_image(output_image, output_file)
+
+def collect_guides(dir: str):
+    image_files = [file for file in os.listdir(dir) if is_image_file(file)]
+    if not image_files:
+        return None
+
+    guides: Dict[str, "data.LocalImage"] = {}
+    for file in image_files:
+        region = path.splitext(path.basename(file))[0]
+        guides[region] = data.LocalImage(
+            path.join(dir, file), collect_local_guides=False
+        )
+    return data.LocalImageCollection(guides)
+
+def get_guided_images_from_dataset(args, image_number_list):
+    for image_number in image_number_list:
+        root = "C:\\Users\\julia\\Downloads\\CelebAMask-HQ\\CelebAMask-HQ-mask"
+        local_path = path.join(root,  str(image_number).rjust(5, '0'))
+        images = data.LocalImageCollection(
+            {
+                "Image": data.LocalImage(
+                    file=path.join(local_path, f"{image_number}.jpg"),
+                    guides=collect_guides(path.join(root,  str(image_number).rjust(5, '0'), "guides"))),
+            }
+        )
+        complete_image = images["Image"].read(size=500, device=args.device)
+        guides = images["Image"].guides.read(size=500, device=args.device)
+        folder = "C:\\Users\\julia\\Desktop\\ODDS_Images\\unmasked_monday\\Präsi"
+
+        image.write_guides(guides, folder)
+        return complete_image, guides
+
+def increase_contrast():
+    root = "C:\\Users\\julia\\Documents\\GitHub\\pystiche_papers\\replication\\bueltemeier_mst_2021\\data\\images\\results"
+    image_names = [
+        "22294_intaglio_detail_body__instance_norm_mask.png",
+        "22294_intaglio_detail_hair__instance_norm_mask.png",
+        "22294_intaglio_detail_skin__instance_norm_mask.png",
+        "22555_intaglio_detail_body__instance_norm_mask.png",
+        "22555_intaglio_detail_hair__instance_norm_mask.png",
+        "22555_intaglio_detail_skin__instance_norm_mask.png",
+        "23620_intaglio_detail_body__instance_norm_mask.png",
+        "23620_intaglio_detail_hair__instance_norm_mask.png",
+        "23620_intaglio_detail_hairskin__instance_norm_mask.png",
+        "22294_intaglio_detail_body__instance_norm.png",
+        "22294_intaglio_detail_hair__instance_norm.png",
+        "22294_intaglio_detail_skin__instance_norm.png",
+        "22555_intaglio_detail_body__instance_norm.png",
+        "22555_intaglio_detail_hair__instance_norm.png",
+        "22555_intaglio_detail_skin__instance_norm.png",
+        "23620_intaglio_detail_body__instance_norm.png",
+        "23620_intaglio_detail_hair__instance_norm.png",
+        "23620_intaglio_detail_hairskin__instance_norm.png",
+    ]
+    for image_name in image_names:
+        img = Image.open(path.join(root, image_name))
+        # img.show()
+        filter = ImageEnhance.Sharpness(img)
+        enhance_image = filter.enhance(2)
+        filter2 = ImageEnhance.Contrast(enhance_image)
+        # enhance_image.show()
+        enhance_image2 = filter2.enhance(1.3)
+        # enhance_image2.show()
+        old_name = image_name.split(".")[0]
+        name = f"{old_name}_enhanced.png"
+        enhance_image2.save(path.join(root, name))
+
+
+def mask_image():
+    root = "C:\\Users\\julia\\Desktop\\ODDS_Images\\unmasked_monday\\Präsi"
+    image_name = "intaglio_mask_UHD_20_1997_22555__instance_norm.png"
+    guide_name = "background.png"
+    img = Image.open(path.join(root, image_name))
+    guide = Image.open(path.join(root, guide_name))
+    img = img.putalpha(guide)
+    print()
+
+
+
+# guided_nst(args)
+# generated_guided_nst(args)
+# create_masked_images(args)
+# get_guided_images_from_dataset([22555,])
+increase_contrast()
+# mask_image()
