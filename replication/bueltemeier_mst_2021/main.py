@@ -8,17 +8,13 @@ from pystiche_papers import utils
 
 from utils import get_style_images_and_guides, read_image_and_guides, get_guided_images_from_dataset, image_numbers
 
-
-
-def training(args, style):
-    image_size = 512
-    contents = (
+contents = (
         # "bueltemeier",
         # "doerksen",
         # "lohweg",    TODO: beard
         # "schaede",
     )
-    styles = (
+styles = (
         "DM_100_1996",
         "MAD_20_2005",
         "Specimen_0_2",
@@ -30,90 +26,128 @@ def training(args, style):
         "MAD_2000_2002",
     )
 
+
+def unmasked_training(args, style):
+    image_size = 512
     images = paper.images(args.image_source_dir)
-    if args.masked:
-        style_images_and_guides = get_style_images_and_guides(style, images, image_size, styles, args)
-        dataset = paper.mask_dataset(path.join(args.dataset_dir),)
-        image_loader = paper.image_loader(
-            dataset, pin_memory=str(args.device).startswith("cuda"),
-        )
 
-        transformer = paper.mask_training(
-            image_loader,
-            style_images_and_guides,
-            instance_norm=args.instance_norm,
-            quiet=args.quiet,
-            logger=args.logger,
-        )
+    style_image = images[style].read(size=image_size, device=args.device)
+    dataset = paper.dataset(path.join(args.dataset_dir),)
+    image_loader = paper.image_loader(
+        dataset, pin_memory=str(args.device).startswith("cuda"),
+    )
 
-        model_name = f"bueltemeier_2021__mask__{style}__intaglio"
+    hyper_parameters = paper.hyper_parameters()
+
+    hyper_parameters.gram_style_loss.score_weight = 9e1
+
+    transformer = paper.training(
+        image_loader,
+        style_image,
+        instance_norm=args.instance_norm,
+        hyper_parameters=hyper_parameters,
+        quiet=args.quiet,
+        logger=args.logger,
+    )
+
+    model_name = f"bueltemeier_2021__{style}__intaglio"
+    if args.instance_norm:
+        model_name += "__instance_norm"
+    utils.save_state_dict(transformer, model_name, root=args.model_dir)
+
+    for content in contents:
+        content_image, content_guides = read_image_and_guides(
+            images[content], device=args.device, size=image_size
+        )
+        output_image, _ = paper.stylization(content_image, transformer)
+        output_name = f"intaglio_{content}_{style}"
         if args.instance_norm:
-            model_name += "__instance_norm"
-        utils.save_state_dict(transformer, model_name, root=args.model_dir)
+            output_name += "__instance_norm"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        image.write_image(output_image, output_file)
 
-        for content in contents:
-            content_image, content_guides = read_image_and_guides(
-                images[content], device=args.device, size=image_size
-            )
-            output_image, _ = paper.mask_stylization(content_image, content_guides, transformer)
-            output_name = f"intaglio_mask_{content}_{style}"
-            if args.instance_norm:
-                output_name += "__instance_norm"
-            output_file = path.join(args.image_results_dir, f"{output_name}.png")
-            image.write_image(output_image, output_file)
-
-        for image_number in image_numbers:
-            content_image, content_guides = get_guided_images_from_dataset(args, image_number)
-            output_image, _ = paper.mask_stylization(content_image, content_guides, transformer)
-            output_name = f"intaglio_mask_{style}_{image_number}"
-            if args.instance_norm:
-                output_name += "__instance_norm"
-            output_file = path.join(args.image_results_dir, f"{output_name}.png")
-            image.write_image(output_image, output_file)
-    else:
-        style_image = images[style].read(size=image_size, device=args.device)
-        dataset = paper.dataset(path.join(args.dataset_dir),)
-        image_loader = paper.image_loader(
-            dataset, pin_memory=str(args.device).startswith("cuda"),
-        )
-
-        hyper_parameters = paper.hyper_parameters()
-
-        hyper_parameters.gram_style_loss.score_weight = 9e1
-
-        transformer = paper.training(
-            image_loader,
-            style_image,
-            instance_norm=args.instance_norm,
-            hyper_parameters=hyper_parameters,
-            quiet=args.quiet,
-            logger=args.logger,
-        )
-
-        model_name = f"bueltemeier_2021__{style}__intaglio"
+    for image_number in image_numbers:
+        content_image, content_guides = get_guided_images_from_dataset(args, image_number)
+        output_image, _ = paper.stylization(content_image, transformer)
+        output_name = f"intaglio_{style}_{image_number}"
         if args.instance_norm:
-            model_name += "__instance_norm"
-        utils.save_state_dict(transformer, model_name, root=args.model_dir)
+            output_name += "__instance_norm"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        image.write_image(output_image, output_file)
 
-        for content in contents:
-            content_image, content_guides = read_image_and_guides(
-                images[content], device=args.device, size=image_size
-            )
-            output_image, _ = paper.stylization(content_image, transformer)
-            output_name = f"intaglio_{content}_{style}"
-            if args.instance_norm:
-                output_name += "__instance_norm"
-            output_file = path.join(args.image_results_dir, f"{output_name}.png")
-            image.write_image(output_image, output_file)
 
-        for image_number in image_numbers:
-            content_image, content_guides = get_guided_images_from_dataset(args, image_number)
-            output_image, _ = paper.stylization(content_image, transformer)
-            output_name = f"intaglio_{style}_{image_number}"
-            if args.instance_norm:
-                output_name += "__instance_norm"
-            output_file = path.join(args.image_results_dir, f"{output_name}.png")
-            image.write_image(output_image, output_file)
+def masked_training(args, style):
+    image_size = 512
+    images = paper.images(args.image_source_dir)
+    style_images_and_guides = get_style_images_and_guides(style, images,
+                                                          image_size, styles,
+                                                          args)
+    dataset = paper.mask_dataset(path.join(args.dataset_dir), )
+    image_loader = paper.image_loader(
+        dataset, pin_memory=str(args.device).startswith("cuda"),
+    )
+
+    transformer = paper.mask_training(
+        image_loader,
+        style_images_and_guides,
+        instance_norm=args.instance_norm,
+        quiet=args.quiet,
+        logger=args.logger,
+    )
+
+    model_name = f"bueltemeier_2021__mask__{style}__intaglio"
+    if args.instance_norm:
+        model_name += "__instance_norm"
+    utils.save_state_dict(transformer, model_name, root=args.model_dir)
+
+    for content in contents:
+        content_image, content_guides = read_image_and_guides(
+            images[content], device=args.device, size=image_size
+        )
+        output_image, _ = paper.mask_stylization(content_image, content_guides,
+                                                 transformer)
+        output_name = f"intaglio_mask_{content}_{style}"
+        if args.instance_norm:
+            output_name += "__instance_norm"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        image.write_image(output_image, output_file)
+
+    for image_number in image_numbers:
+        content_image, content_guides = get_guided_images_from_dataset(args,
+                                                                       image_number)
+        output_image, _ = paper.mask_stylization(content_image, content_guides,
+                                                 transformer)
+        output_name = f"intaglio_mask_{style}_{image_number}"
+        if args.instance_norm:
+            output_name += "__instance_norm"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        image.write_image(output_image, output_file)
+
+
+def substyle_masked_training(args, style):
+    image_size = 512
+    images = paper.images(args.image_source_dir)
+    style_image, style_guides = read_image_and_guides(images[style], size=image_size, device=args.device)
+    del style_guides["background"]
+    dataset = paper.dataset(path.join(args.dataset_dir), )
+    image_loader = paper.image_loader(
+        dataset, pin_memory=str(args.device).startswith("cuda"),
+    )
+
+    transformer = paper.substyle_mask_training(
+        image_loader,
+        style_image,
+        style_guides,
+        instance_norm=args.instance_norm,
+        quiet=args.quiet,
+        logger=args.logger,
+    )
+
+    model_name = f"bueltemeier_2021__substyles_mask__{style}__intaglio"
+    if args.instance_norm:
+        model_name += "__instance_norm"
+    utils.save_state_dict(transformer, model_name, root=args.model_dir)
+
 
 
 def parse_input():
@@ -125,6 +159,7 @@ def parse_input():
     device = None
     instance_norm = True
     masked = True
+    substyles_only = True
     quiet = False
 
     def process_dir(dir):
@@ -169,6 +204,7 @@ def parse_input():
         device=device,
         instance_norm=instance_norm,
         masked=masked,
+        substyles_only=substyles_only,
         logger=logger,
         quiet=quiet,
     )
@@ -184,16 +220,22 @@ if __name__ == "__main__":
     )
 
     for style in styles:
-        for state in (True,False):
+        for state in (True, False):
             here = path.dirname(__file__)
             args.masked = state
-            # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
-            dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+            dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+            # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
             args.dataset_dir = (
                 path.join(dataset_path, "CelebAMask-HQ-mask")
-                if args.masked
+                if args.masked and not args.substyles_only
                 else path.join(
                     dataset_path, "CelebA-HQ-img"
                 )
             )
-            training(args, style)
+            if args.masked:
+                if args.substyles_only:
+                    substyle_masked_training(args, style)
+                else:
+                    masked_training(args, style)
+            else:
+                unmasked_training(args, style)

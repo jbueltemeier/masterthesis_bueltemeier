@@ -268,5 +268,5 @@ def mask_image():
 # generated_guided_nst(args)
 # create_masked_images(args)
 # get_guided_images_from_dataset([22555,])
-increase_contrast()
+# increase_contrast()
 # mask_image()
