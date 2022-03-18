@@ -168,14 +168,10 @@ class UpResidualBlock(nn.Module):
         self, in_channels, channels, stride=2, expansion=4, instance_norm=False
     ):
         super(UpResidualBlock, self).__init__()
-        self.residual_layer = conv_block(
-            in_channels,
-            channels * expansion,
-            kernel_size=1,
-            stride=1,
-            upsample=stride,
-            instance_norm=instance_norm,
-        )
+        self.residual_layer = nn.Sequential(*[
+            upsample_block(scale_factor=2),
+            conv(in_channels, channels * expansion, kernel_size=1, stride=1)
+        ])
 
         modules = [
             conv_block(
