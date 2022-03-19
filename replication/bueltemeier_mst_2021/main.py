@@ -14,18 +14,6 @@ contents = (
         # "lohweg",    TODO: beard
         # "schaede",
     )
-styles = (
-        "DM_100_1996",
-        "MAD_20_2005",
-        "Specimen_0_2",
-        "Specimen_0_2005",
-        "UHD_20_1997",
-        "GBP_5_2002",
-        "UAH_1_2006",
-        "LRD_50_2008",
-        "MAD_2000_2002",
-    )
-
 
 def unmasked_training(args, style):
     image_size = 512
@@ -39,7 +27,7 @@ def unmasked_training(args, style):
 
     hyper_parameters = paper.hyper_parameters()
 
-    hyper_parameters.gram_style_loss.score_weight = 9e1
+    hyper_parameters.gram_style_loss.score_weight = 1e2
 
     transformer = paper.training(
         image_loader,
@@ -77,6 +65,17 @@ def unmasked_training(args, style):
 
 
 def masked_training(args, style):
+    styles = (
+        "DM_100_1996",
+        "MAD_20_2005",
+        "Specimen_0_2",
+        "Specimen_0_2005",
+        "UHD_20_1997",
+        "GBP_5_2002",
+        "UAH_1_2006",
+        "LRD_50_2008",
+        "MAD_2000_2002",
+    )
     image_size = 512
     images = paper.images(args.image_source_dir)
     style_images_and_guides = get_style_images_and_guides(style, images,
@@ -133,6 +132,12 @@ def substyle_masked_training(args, style):
     image_loader = paper.image_loader(
         dataset, pin_memory=str(args.device).startswith("cuda"),
     )
+
+    hyper_parameters = paper.hyper_parameters()
+
+    # hyper_parameters.gram_style_loss.score_weight = 1e3
+    # hyper_parameters.batch_sampler.num_iterations = 240000
+    # hyper_parameters.batch_sampler.batch_size = 4
 
     transformer = paper.substyle_mask_training(
         image_loader,
@@ -209,8 +214,8 @@ def parse_input():
     image_results_dir = process_dir(image_results_dir)
 
     if dataset_dir is None:
-        dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
-        # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+        # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+        dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
         dataset_dir = (
             path.join(dataset_path, "CelebAMask-HQ-mask")
             if masked
@@ -254,19 +259,12 @@ if __name__ == "__main__":
         for state in (True, ):
             here = path.dirname(__file__)
             args.masked = state
-            dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
-            # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
-            args.dataset_dir = (
-                path.join(dataset_path, "CelebAMask-HQ-mask")
-                if args.masked and not args.substyles_only
-                else path.join(
-                    dataset_path, "CelebA-HQ-img"
-                )
-            )
-            if args.masked:
-                if args.substyles_only:
-                    substyle_masked_training(args, style)
-                else:
-                    masked_training(args, style)
-            else:
-                unmasked_training(args, style)
+            # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+            dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+            args.dataset_dir = path.join(dataset_path, "CelebA-HQ-img")
+            substyle_masked_training(args, style)
+            unmasked_training(args, style)
+            args.dataset_dir = path.join(dataset_path, "CelebAMask-HQ-mask")
+            masked_training(args, style)
+
+

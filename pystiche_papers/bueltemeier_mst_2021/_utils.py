@@ -41,7 +41,7 @@ def hyper_parameters() -> HyperParameters:
     style_loss = HyperParameters(
         layers=style_loss_layers,
         layer_weights=compute_layer_weights(style_loss_layers),
-        score_weight=1e3,
+        score_weight=1e0,
     )
 
     return HyperParameters(
@@ -68,6 +68,6 @@ def hyper_parameters() -> HyperParameters:
             image_size=512,
             edge="short"
         ),
-        batch_sampler=HyperParameters(num_iterations=160000, batch_size=2),
+        batch_sampler=HyperParameters(num_iterations=50000, batch_size=1),
         loss=HyperParameters(modes=["gram",]),  # possible modes "gram", "mrf", "gabor"
     )

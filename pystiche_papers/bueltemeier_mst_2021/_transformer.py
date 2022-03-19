@@ -260,7 +260,7 @@ class MSTTransformer(ConvertTransformer):
 class SubstyleMSTTransformer(SubstylesRegionConvertTransformer):
     def __init__(self, regions: Sequence[str], in_channels=3, instance_norm=False, recalc_enc: bool = True, masked_transfer: bool =True) -> None:
         self.recalc_enc = recalc_enc
-        channels = 32
+        channels = 64
         expansion = 4
         _encoder = encoder(in_channels=in_channels, channels=channels, expansion=expansion, instance_norm=instance_norm)
         _decoder = decoder(channels, out_channels=in_channels, expansion=expansion, instance_norm=instance_norm)
