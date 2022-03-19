@@ -194,8 +194,6 @@ def parse_input():
     model_dir = None
     device = None
     instance_norm = True
-    masked = True
-    substyles_only = True
     quiet = False
 
     def process_dir(dir):
@@ -216,13 +214,7 @@ def parse_input():
     if dataset_dir is None:
         # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
         dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
-        dataset_dir = (
-            path.join(dataset_path, "CelebAMask-HQ-mask")
-            if masked
-            else path.join(
-                dataset_path, "CelebA-HQ-img"
-            )
-        )
+        dataset_dir = path.join(dataset_path, "CelebAMask-HQ-mask")
     dataset_dir = process_dir(dataset_dir)
 
     if model_dir is None:
@@ -239,8 +231,6 @@ def parse_input():
         model_dir=model_dir,
         device=device,
         instance_norm=instance_norm,
-        masked=masked,
-        substyles_only=substyles_only,
         logger=logger,
         quiet=quiet,
     )
@@ -256,15 +246,13 @@ if __name__ == "__main__":
     )
 
     for style in styles:
-        for state in (True, ):
-            here = path.dirname(__file__)
-            args.masked = state
-            # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
-            dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
-            args.dataset_dir = path.join(dataset_path, "CelebA-HQ-img")
-            substyle_masked_training(args, style)
-            unmasked_training(args, style)
-            args.dataset_dir = path.join(dataset_path, "CelebAMask-HQ-mask")
-            masked_training(args, style)
+        here = path.dirname(__file__)
+        # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+        dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+        args.dataset_dir = path.join(dataset_path, "CelebA-HQ-img")
+        substyle_masked_training(args, style)
+        unmasked_training(args, style)
+        args.dataset_dir = path.join(dataset_path, "CelebAMask-HQ-mask")
+        masked_training(args, style)
 
 
