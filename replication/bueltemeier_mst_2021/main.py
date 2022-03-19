@@ -125,13 +125,6 @@ def masked_training(args, style):
 
 def substyle_masked_training(args, style):
     image_size = 512
-    images = paper.images(args.image_source_dir)
-    style_image, style_guides = read_image_and_guides(images[style], size=image_size, device=args.device)
-    del style_guides["background"]
-    dataset = paper.dataset(path.join(args.dataset_dir), )
-    image_loader = paper.image_loader(
-        dataset, pin_memory=str(args.device).startswith("cuda"),
-    )
 
     hyper_parameters = paper.hyper_parameters()
 
@@ -139,11 +132,20 @@ def substyle_masked_training(args, style):
     hyper_parameters.batch_sampler.num_iterations = 240000
     hyper_parameters.batch_sampler.batch_size = 4
 
+    images = paper.images(args.image_source_dir)
+    style_image, style_guides = read_image_and_guides(images[style], size=image_size, device=args.device)
+    del style_guides["background"]
+    dataset = paper.dataset(path.join(args.dataset_dir), )
+    image_loader = paper.image_loader(
+        dataset, pin_memory=str(args.device).startswith("cuda"),hyper_parameters=hyper_parameters
+    )
+
     transformer = paper.substyle_mask_training(
         image_loader,
         style_image,
         style_guides,
         instance_norm=args.instance_norm,
+        hyper_parameters=hyper_parameters,
         quiet=args.quiet,
         logger=args.logger,
     )
@@ -212,8 +214,8 @@ def parse_input():
     image_results_dir = process_dir(image_results_dir)
 
     if dataset_dir is None:
-        # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
-        dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+        dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+        # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
         dataset_dir = path.join(dataset_path, "CelebAMask-HQ-mask")
     dataset_dir = process_dir(dataset_dir)
 
@@ -247,8 +249,8 @@ if __name__ == "__main__":
 
     for style in styles:
         here = path.dirname(__file__)
-        # dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
-        dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+        dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+        # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
         args.dataset_dir = path.join(dataset_path, "CelebA-HQ-img")
         substyle_masked_training(args, style)
         unmasked_training(args, style)

@@ -239,10 +239,10 @@ def batch_sampler(
     )
 
 
-def image_loader(dataset: Dataset, pin_memory: bool = True,) -> DataLoader:
+def image_loader(dataset: Dataset, pin_memory: bool = True, hyper_parameters: Optional[HyperParameters] = None,) -> DataLoader:
     return DataLoader(
         dataset,
-        batch_sampler=batch_sampler(dataset),
+        batch_sampler=batch_sampler(dataset, hyper_parameters=hyper_parameters),
         num_workers=0,
         pin_memory=pin_memory,
     )
