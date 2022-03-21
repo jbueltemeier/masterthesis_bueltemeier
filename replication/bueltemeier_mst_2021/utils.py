@@ -81,9 +81,8 @@ def collect_guides(dir: str):
 
 
 def get_guided_images_from_dataset(args, image_number):
-    here = path.dirname(__file__)
-    # root = path.join(here, "data", "images", "dataset", "CelebAMask-HQ", "CelebAMask-HQ-mask")
-    root = path.join('~/datasets/celebamask/CelebAMask-HQ/', "CelebAMask-HQ-mask")
+    base_root = path.join(*args.dataset_dir.split('\\')[:-1]) # remove last
+    root = path.join(base_root, "CelebAMask-HQ-mask")
     local_path = path.join(root,  str(image_number).rjust(5, '0'))
     images = data.LocalImageCollection(
          {
