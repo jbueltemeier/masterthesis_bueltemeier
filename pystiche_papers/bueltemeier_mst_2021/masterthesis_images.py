@@ -273,7 +273,3 @@ def create_images_masterthesis_fundamentals():
     guided_nst()
     generated_substyle_nst()
     create_masked_images()
-
-#####################################Results############################################
-
-
