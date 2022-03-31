@@ -96,12 +96,13 @@ def conv_block(
         modules += [upsample_block(scale_factor=upsample)]
 
     modules += [
-        conv(in_channels, out_channels, kernel_size, stride=stride, padding=padding)
-    ]
-    modules += [
         norm(out_channels, instance_norm),
         nn.ReLU(inplace=inplace),
     ]
+    modules += [
+        conv(in_channels, out_channels, kernel_size, stride=stride, padding=padding)
+    ]
+
     return nn.Sequential(*modules)
 
 
@@ -293,6 +294,8 @@ def decoder(in_channels, out_channels=3, expansion=4, instance_norm=False):
             expansion=expansion,
             instance_norm=instance_norm,
         ),
+        norm(16*expansion, instance_norm=instance_norm),
+        nn.ReLU(inplace=True),
         conv(16 * expansion, out_channels, kernel_size=7, stride=1),
     ]
     return SequentialDecoder(*modules)
