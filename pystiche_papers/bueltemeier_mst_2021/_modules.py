@@ -96,7 +96,7 @@ def conv_block(
         modules += [upsample_block(scale_factor=upsample)]
 
     modules += [
-        norm(out_channels, instance_norm),
+        norm(in_channels, instance_norm),
         nn.ReLU(inplace=inplace),
     ]
     modules += [
