@@ -1,10 +1,91 @@
 import os
 from os import path
 
+from torch import nn
+from pystiche.image import transforms
+
 from typing import Dict
 from torchvision.datasets.folder import is_image_file
 
-from pystiche import data
+from pystiche import data, image
+
+
+seg_color_map = {
+    'background': (153,153,153),
+    'skin': (152,78,163),
+    'nose': (77,175,74),
+    'glasses': (255,255,255),
+    'eye': (55,126,184),
+    'brows': (247,129,191),
+    'ears': (166,86,40),
+    'lips': (255,255,51),
+    'hair': (255,127,0),
+    'headwear': (166,206,227),
+    'accessoire': (0,0,0),
+    'body': (228,26,28),
+}
+
+DM_100_1996 = {
+    "background": (1,1,617,512),
+    "skin": (1,1,617,512),
+    "nose": (1,1,617,512),
+    "glasses": (1,1,684,512),
+    "eye": (1,1,617,512),
+    "brows": (1,1,617,512),
+    "ears": (1,1,617,512),
+    "lips": (1,1,617,512),
+    "hair": (1,1,617,512),
+    "headwear": (1,1,687,512),
+    "accessoire": (1,1,729,512),
+    "body": (1,1,741,512),
+}
+UHD_20_1997 = {
+    "background": (1,1,787,512),
+    "skin": (1,1,787,512),
+    "nose": (1,1,787,512),
+    "glasses": (1,1,684,512),
+    "eye": (1,1,787,512),
+    "brows": (1,1,787,512),
+    "ears": (1,1,787,512),
+    "lips": (1,1,787,512),
+    "hair": (1,1,787,512),
+    "headwear": (1,1,687,512),
+    "accessoire": (1,1,729,512),
+    "body": (1,1,741,512),
+}
+
+MAD_20_1997 = {
+    "background": (1,1,741,512),
+    "skin": (1,1,741,512),
+    "nose": (1,1,741,512),
+    "glasses": (1,1,684,512),
+    "eye": (1,1,741,512),
+    "brows": (1,1,741,512),
+    "ears": (1,1,741,512),
+    "lips": (1,1,741,512),
+    "hair": (1,1,741,512),
+    "headwear": (1,1,687,512),
+    "accessoire": (1,1,729,512),
+    "body": (1,1,741,512),
+}
+
+
+def init_dataset(masked=True, programming_dataset=True):
+    if programming_dataset:
+        here = path.dirname(__file__)
+        dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
+    else:  # extern --  example Rechenknecht
+        dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+    return path.join(dataset_path, "CelebAMask-HQ-mask") if masked else \
+        path.join(dataset_path, "CelebA-HQ-img")
+
+
+def content_transform(image_size) -> nn.Sequential:
+    transforms_ = [
+        transforms.Resize(image_size, edge="short"),
+        transforms.CenterCrop((image_size, image_size)),
+    ]
+    return nn.Sequential(*transforms_)
 
 
 def read_image_and_guides(image, **read_kwargs):
@@ -111,12 +192,7 @@ def collect_guides(dir: str):
 
 
 def get_guided_images_from_dataset(args, image_number):
-    # root_parts = args.dataset_dir.split('\\')[:-1]
-    root_parts = args.dataset_dir.split('/')[:-1]
-    # base_root = path.join(root_parts[0], *root_parts[1:])
-    base_root = path.join('/home/', *root_parts[2:])
-    # base_root = path.join('/home/julianbueltemeier', *root_parts[1:])
-    root = path.join(base_root, "CelebAMask-HQ-mask")
+    root = init_dataset(masked=True,programming_dataset=args.programming_dataset)
     local_path = path.join(root,  str(image_number).rjust(5, '0'))
     images = data.LocalImageCollection(
          {
@@ -141,3 +217,10 @@ def crop_guides_detail(guides, positons):
         if not guide.sum() == 0:
             reduced_guides[name] = guide
     return reduced_guides
+
+
+def crop_detail(args, umage_number=22294):
+    content_image, content_guides = get_guided_images_from_dataset(args, 22294)
+    content_image = crop_image_detail(content_image, (180,280,220,320))
+    content_guides = crop_guides_detail(content_guides, (180,280,220,320))
+    image.show_image(content_image)

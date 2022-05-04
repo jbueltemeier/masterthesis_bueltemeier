@@ -2,114 +2,40 @@ import os
 from argparse import Namespace
 from os import path
 # from memory_profiler import profile
-from torch import nn
 import torch
-from pystiche.image import transforms
 from pystiche import misc, optim, image
 import pystiche_papers.bueltemeier_mst_2021 as paper
-from utils import get_guided_images_from_dataset, image_numbers, crop_image_detail, crop_guides_detail, detail_image_numbers
+import utils as _utils
 
-def content_transform(image_size) -> nn.Sequential:
-    transforms_ = [
-        transforms.Resize(image_size, edge="short"),
-        transforms.CenterCrop((image_size, image_size)),
-    ]
-    return nn.Sequential(*transforms_)
 
-seg_color_map = {
-    'background': (153,153,153),
-    'skin': (152,78,163),
-    'nose': (77,175,74),
-    'glasses': (255,255,255),
-    'eye': (55,126,184),
-    'brows': (247,129,191),
-    'ears': (166,86,40),
-    'lips': (255,255,51),
-    'hair': (255,127,0),
-    'headwear': (166,206,227),
-    'accessoire': (0,0,0),
-    'body': (228,26,28),
-}
+def segmentation_image(content_guides, output_name):
+    segmentaion_image = image.guides_to_segmentation(
+        content_guides,
+        color_map=_utils.seg_color_map
+    )
+    output_file = path.join(args.image_results_dir, f"{output_name}_seg.png")
+    image.write_image(segmentaion_image, output_file)
 
-DM_100_1996 = {
-    "background": (1,1,617,512),
-    "skin": (1,1,617,512),
-    "nose": (1,1,617,512),
-    "glasses": (1,1,684,512),
-    "eye": (1,1,617,512),
-    "brows": (1,1,617,512),
-    "ears": (1,1,617,512),
-    "lips": (1,1,617,512),
-    "hair": (1,1,617,512),
-    "headwear": (1,1,687,512),
-    "accessoire": (1,1,729,512),
-    "body": (1,1,741,512),
-}
-UHD_20_1997 = {
-    "background": (1,1,787,512),
-    "skin": (1,1,787,512),
-    "nose": (1,1,787,512),
-    "glasses": (1,1,684,512),
-    "eye": (1,1,787,512),
-    "brows": (1,1,787,512),
-    "ears": (1,1,787,512),
-    "lips": (1,1,787,512),
-    "hair": (1,1,787,512),
-    "headwear": (1,1,687,512),
-    "accessoire": (1,1,729,512),
-    "body": (1,1,741,512),
-}
 
-MAD_20_1997 = {
-    "background": (1,1,741,512),
-    "skin": (1,1,741,512),
-    "nose": (1,1,741,512),
-    "glasses": (1,1,684,512),
-    "eye": (1,1,741,512),
-    "brows": (1,1,741,512),
-    "ears": (1,1,741,512),
-    "lips": (1,1,741,512),
-    "hair": (1,1,741,512),
-    "headwear": (1,1,687,512),
-    "accessoire": (1,1,729,512),
-    "body": (1,1,741,512),
-}
-
-def main(args, time_track = False, detail = True, save_segmentation = False):
-    n = 0
-    if args.masked:
-
-        # content_image, content_guides = get_guided_images_from_dataset(args, 22294)
-        # content_image = crop_image_detail(content_image, (180,280,220,320))
-        # content_guides = crop_guides_detail(content_guides, (180,280,220,320))
-        # image.show_image(content_image)
-
-        model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
-        # model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-ba8a81c1.pth"
-        transformer = load_transformer(
-            path.join(args.model_dir, "stylization"), args.instance_norm,
-            model_name)
-        #
-        # model_name = "bueltemeier_2021__mask__DM_100_1996__intaglio__instance_norm-3c42f459.pth"
-        # transformer2 = load_transformer(path.join(args.model_dir,"stylization2"), args.instance_norm, model_name)
-
-        # model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-8ddf3661.pth"
-        # transformer2 = load_transformer(path.join(args.model_dir,"stylization2"), args.instance_norm, model_name)
-        #
-        # transformer.eye_target_repr = transformer2.eye_target_repr
-        # transformer.eye_target_enc_guide = transformer2.eye_target_enc_guide
-        # transformer.eye_target_image = transformer2.eye_target_image
-        # transformer.eye_bottleneck = transformer2.eye_bottleneck
-
-        dataset = paper.mask_dataset(path.join(args.dataset_dir))
-        times = []
-        for i in range(n):
+def stylise_images(
+        dataset,
+        transformer,
+        model_name,
+        masked,
+        save_segmentation=False,
+        time_track=False,
+        number_images=0):
+    times = []
+    if masked:
+        for i in range(number_images):
             content_image, content_guides = dataset.__getitem__(i)
             content_image = content_image.to(args.device)
             for key, guide in content_guides.items():
                 content_guides[key] = content_guides[key].to(args.device)
-            output_image, excecution_time = paper.mask_stylization(content_image, content_guides, transformer, track_time=time_track)
-
+            output_image, excecution_time = paper.mask_stylization(content_image,
+                                                                   content_guides,
+                                                                   transformer,
+                                                                   track_time=time_track)
             if excecution_time is not None:
                 times.append(excecution_time)
 
@@ -122,118 +48,172 @@ def main(args, time_track = False, detail = True, save_segmentation = False):
 
             # save segementation image
             if save_segmentation:
-                segmentaion_image = image.guides_to_segmentation(content_guides, color_map=seg_color_map)
-                output_file = path.join(args.image_results_dir, f"{output_name}_seg.png")
-                image.write_image(segmentaion_image, output_file)
+                segmentation_image(content_guides, output_name)
+        else:
+            for i in range(number_images):
+                content_image = dataset.__getitem__(i)
+                content_image = content_image.to(args.device)
+                output_image, excecution_time = paper.stylization(content_image,
+                                                                  transformer,
+                                                                  track_time=time_track)
 
+                if excecution_time is not None:
+                    times.append(excecution_time)
 
-        if times:
-            times = times[1:] # run all operations once for cuda warm-up -> time error first item
-            message = f"{args.device} time: {sum(times) / (n-1)}"
-            print(message)
-
-        for image_number in image_numbers:
-            content_image, content_guides = get_guided_images_from_dataset(args, image_number)
-            output_image, _ = paper.mask_stylization(content_image, content_guides, transformer, track_time=time_track)
-            # output_image2, _ = paper.mask_stylization(content_image, content_guides, transformer2, track_time=time_track)
-            output_name = f"{image_number}_intaglio_mask"
-            if args.instance_norm:
-                output_name += "__instance_norm"
-            output_file = path.join(args.image_results_dir, f"{output_name}.png")
-            # image.write_image(output_image, output_file)
-
-            if save_segmentation:
-                segmentaion_image = image.guides_to_segmentation(content_guides, color_map=seg_color_map)
-                output_file = path.join(args.image_results_dir, f"{output_name}_seg.png")
-                image.write_image(segmentaion_image, output_file)
-
-            output_file = path.join(args.image_results_dir, f"{image_number}_image.png")
-            image.write_image(content_image, output_file)
-
-            output_file = path.join(args.image_results_dir, f"{image_number}_intaglio_background_mask.png")
-            masked_image = output_image.masked_fill(content_guides["background"] == 1,1)
-            image.write_image(masked_image, output_file)
-            #
-            # output_file = path.join(args.image_results_dir, f"{image_number}_intaglio_background_mask.png")
-            # output_image2 = output_image2.masked_fill(content_guides["eye"] != 1,0)
-            # # image.show_image(output_image2)
-            # masked_image[content_guides["eye"] == 1] = output_image2[content_guides["eye"] == 1]
-            # image.write_image(masked_image, output_file)
-        if detail:
-            for image_number, detail_position in detail_image_numbers:
-                content_image, content_guides = get_guided_images_from_dataset(
-                    args, image_number)
-                content_image = crop_image_detail(content_image, detail_position)
-                content_guides = crop_guides_detail(content_guides, detail_position)
-                output_image, _ = paper.mask_stylization(content_image, content_guides, transformer, track_time=time_track)
-                regions = ''.join(list(content_guides.keys()))
-                output_name = f"{image_number}_intaglio_detail_{regions}"
-                if args.instance_norm:
-                    output_name += "__instance_norm"
-                output_file = path.join(args.image_results_dir, f"{output_name}_mask.png")
-                if "background" in content_guides.keys():
-                    output_image = output_image.masked_fill(content_guides["background"] == 1, 1)
-                image.write_image(output_image, output_file)
-
-                transform = content_transform(170)
-
-                output_file = path.join(args.image_results_dir, f"{output_name}_image.png")
-                image.write_image(transform(content_image), output_file)
-    else:
-        # model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-379670d4.pth"
-        model_name = "bueltemeier_2021__UHD_20_1997__intaglio__instance_norm-514f2403.pth"
-        transformer = load_transformer(path.join(args.model_dir, "stylization"),
-                                       args.instance_norm, model_name)
-        dataset = paper.dataset(path.join(args.dataset_dir))
-
-        times = []
-        for i in range(n):
-            content_image = dataset.__getitem__(i)
-            content_image = content_image.to(args.device)
-            output_image, excecution_time = paper.stylization(content_image, transformer, track_time=time_track)
-
-            if excecution_time is not None:
-                times.append(excecution_time)
-
-            style = model_name.split("__")[1]
-            output_name = f"intaglio_{i}_{style}__{args.device}"
-            if args.instance_norm:
-                output_name += "__instance_norm"
-            output_file = path.join(args.image_results_dir, f"{output_name}.png")
-            image.write_image(output_image, output_file)
-
-        if times:
-            times = times[1:] # run all operations once for cuda warm-up -> time error first item
-            message = f"{args.device} time: {sum(times) / (n-1)}"
-            print(message)
-
-        for image_number in image_numbers:
-            content_image, content_guides = get_guided_images_from_dataset(args, image_number)
-
-            output_image, _ = paper.stylization(content_image, transformer)
-            output_name = f"{image_number}_intaglio"
-            if args.instance_norm:
-                output_name += "__instance_norm"
-            output_file = path.join(args.image_results_dir, f"{output_name}.png")
-            # image.write_image(output_image, output_file)
-
-            output_file = path.join(args.image_results_dir, f"{image_number}_intaglio_background.png")
-            masked_image = output_image.masked_fill(content_guides["background"] == 1,1)
-            image.write_image(masked_image, output_file)
-
-        if detail:
-            for image_number, detail_position in detail_image_numbers:
-                content_image, content_guides = get_guided_images_from_dataset(
-                    args, image_number)
-                content_guides = crop_guides_detail(content_guides, detail_position)
-                content_image = crop_image_detail(content_image, detail_position)
-                output_image, _ = paper.stylization(content_image, transformer)
-                regions = ''.join(list(content_guides.keys()))
-                output_name = f"{image_number}_intaglio_detail_{regions}"
+                style = model_name.split("__")[1]
+                output_name = f"intaglio_{i}_{style}__{args.device}"
                 if args.instance_norm:
                     output_name += "__instance_norm"
                 output_file = path.join(args.image_results_dir, f"{output_name}.png")
                 image.write_image(output_image, output_file)
+
+        if times:
+            # run all operations once for cuda warm-up -> time error first item
+            times = times[1:]
+            message = f"{args.device} time: {sum(times) / (number_images - 1)}"
+            print(message)
+
+
+def save_content_image(content_image, output_name):
+    output_file = path.join(args.image_results_dir, f"{output_name}_image.png")
+    image.write_image(content_image, output_file)
+
+
+def whitening_background(output_image, content_guides, output_name):
+    output_file = path.join(
+        args.image_results_dir,
+        f"{output_name}_background.png"
+    )
+    masked_image = output_image.masked_fill(content_guides["background"] == 1, 1)
+    image.write_image(masked_image, output_file)
+
+
+def stylise_image_numbers(
+        transformer,
+        masked,
+        save_segmentation=True,
+        content_image_save=True,
+        white_background=True
+):
+    for image_number in _utils.image_numbers:
+        content_image, content_guides = _utils.get_guided_images_from_dataset(
+            args,
+            image_number
+        )
+        if masked:
+            output_image, _ = paper.mask_stylization(
+                content_image,
+                content_guides,
+                transformer
+            )
+        else:
+            output_image, _ = paper.stylization(content_image, transformer)
+        output_name = f"{image_number}_intaglio"
+        if args.instance_norm:
+            output_name += "__instance_norm"
+        if masked:
+            output_name += "__mask"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        image.write_image(output_image, output_file)
+
+        if save_segmentation and masked:
+            segmentation_image(content_guides, output_name)
+
+        if content_image_save:
+            save_content_image(content_image, output_name)
+
+        if white_background:
+            whitening_background(output_image, content_guides, output_name)
+
+
+def stylise_detail_images(transformer, masked):
+    for image_number, detail_position in _utils.detail_image_numbers:
+        content_image, content_guides = _utils.get_guided_images_from_dataset(
+            args, image_number)
+        content_image = _utils.crop_image_detail(content_image, detail_position)
+        content_guides = _utils.crop_guides_detail(content_guides, detail_position)
+        if masked:
+            output_image, _ = paper.mask_stylization(
+                content_image,
+                content_guides,
+                transformer,
+            )
+        else:
+            output_image, _ = paper.stylization(content_image, transformer)
+        regions = ''.join(list(content_guides.keys()))
+        output_name = f"{image_number}_intaglio_detail_{regions}"
+        if args.instance_norm:
+            output_name += "__instance_norm"
+        if masked:
+            output_name += "__mask"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        if "background" in content_guides.keys():
+            output_image = output_image.masked_fill(
+                content_guides["background"] == 1,
+                1
+            )
+        image.write_image(output_image, output_file)
+
+        transform = _utils.content_transform(170)
+        output_file = path.join(args.image_results_dir, f"{output_name}_image.png")
+        image.write_image(transform(content_image), output_file)
+
+
+def stylise_main(args, time_track=False, detail=True, save_segmentation=False):
+    if args.masked:
+        model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
+        # model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-ba8a81c1.pth"
+        transformer = load_transformer(
+            path.join(args.model_dir, "stylization"),
+            args.instance_norm,
+            model_name
+        )
+        dataset = paper.mask_dataset(path.join(args.dataset_dir))
+        stylise_images(
+            dataset,
+            transformer,
+            model_name,
+            time_track=time_track,
+            save_segmentation=save_segmentation,
+            number_images=0
+        )
+        stylise_image_numbers(
+            transformer,
+            args.masked,
+            save_segmentation=save_segmentation,
+            content_image_save=True,
+            white_background=True,
+        )
+
+        if detail:
+            stylise_detail_images(transformer, masked=args.masked)
+    else:
+        # model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-379670d4.pth"
+        model_name = "bueltemeier_2021__UHD_20_1997__intaglio__instance_norm-514f2403.pth"
+        transformer = load_transformer(
+            path.join(args.model_dir, "stylization"),
+            args.instance_norm,
+            model_name
+        )
+        dataset = paper.dataset(path.join(args.dataset_dir))
+        stylise_images(
+            dataset,
+            transformer,
+            model_name,
+            args.masked,
+            time_track=time_track,
+            save_segmentation=save_segmentation,
+            number_images=0
+        )
+        stylise_image_numbers(
+            transformer,
+            args.masked,
+            save_segmentation=save_segmentation,
+            content_image_save=True,
+            white_background=True,
+        )
+        if detail:
+            stylise_detail_images(transformer, masked=args.masked)
 
 
 def load_transformer(model_dir, instance_norm, model_name):
@@ -267,7 +247,7 @@ def load_transformer(model_dir, instance_norm, model_name):
                         init_image = torch.rand(state_dict[f"{region}_target_guide"].size())
                         init_guide = torch.ones(state_dict[f"{region}_target_guide"].size())
                     else:
-                        image_size = UHD_20_1997[region]
+                        image_size = _utils.UHD_20_1997[region]
                         init_image = torch.rand(image_size)
                         init_guide = torch.ones(image_size)
                         state_dict[f"{region}_target_guide"] = init_guide
@@ -313,14 +293,14 @@ def parse_input():
     image_results_dir = process_dir(image_results_dir)
 
     if dataset_dir is None:
-        # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
-        dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
-        dataset_dir = (
-            path.join(dataset_path, "CelebAMask-HQ-mask")
-            if masked
-            else path.join(
-                dataset_path, "CelebA-HQ-img"
-            )
+        dataset = "CelebAMask-HQ-mask" if masked else "CelebA-HQ-img"
+        dataset_dir = path.join(  # default to masked
+            here,
+            "data",
+            "images",
+            "dataset",
+            "CelebAMask-HQ",
+            dataset
         )
     dataset_dir = process_dir(dataset_dir)
 
@@ -341,23 +321,29 @@ def parse_input():
         masked=masked,
         logger=logger,
         quiet=quiet,
+        programming_dataset=True,  # switch dataset from intern to extern (Rechenknecht)
     )
+
+
+def stylisation(args, track_time=False):
+    for masked_state in [True, False]:
+        if track_time:
+            for device in ['cuda', 'cpu']:
+                args.masked = masked_state
+                args.dataset_dir = _utils.init_dataset(
+                    masked=args.masked,
+                    programming_dataset=True
+                )
+                args.device = device
+                stylise_main(args)
+        else:
+            args.dataset_dir = _utils.init_dataset(
+                masked=args.masked,
+                programming_dataset=True
+            )
+            stylise_main(args)
 
 
 if __name__ == "__main__":
     args = parse_input()
-    for state in [True,False]:
-        for device in ['cuda',]: # 'cpu'
-            here = path.dirname(__file__)
-            args.masked = state
-            dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
-            # dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
-            args.dataset_dir = (
-                path.join(dataset_path, "CelebAMask-HQ-mask")
-                if args.masked
-                else path.join(
-                    dataset_path, "CelebA-HQ-img"
-                )
-            )
-            args.device = device
-            main(args)
+    stylisation(args)
