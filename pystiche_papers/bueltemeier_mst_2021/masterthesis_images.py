@@ -137,7 +137,6 @@ def iteration_nst():
     nst_script(content_image, style_image, device, output_file, style_weight=1e0)
 
 
-
 def guided_nst():
     images_, device = load_images()
     image_size = 512
@@ -268,7 +267,7 @@ def create_masked_images():
         create_masked_images_script(name)
 
 
-def create_images_masterthesis_fundamentals():
+if __name__ == "__main__":
     iteration_nst()
     guided_nst()
     generated_substyle_nst()
