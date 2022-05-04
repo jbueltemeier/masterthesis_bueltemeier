@@ -70,5 +70,5 @@ def hyper_parameters() -> HyperParameters:
         ),
         batch_sampler=HyperParameters(num_iterations=30000, batch_size=1),
         loss=HyperParameters(modes=["gram",]),  # possible modes "gram", "mrf", "gabor"
-        masked=HyperParameters(straighten_blocks=3),
+        masked=HyperParameters(straighten_blocks=0),
     )

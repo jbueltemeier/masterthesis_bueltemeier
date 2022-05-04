@@ -311,12 +311,12 @@ class MaskMSTTransformer(RegionConvertTransformer):
             setattr(self, f"{region}_bottleneck", bottleneck(channels, expansion=expansion, instance_norm=instance_norm))
 
         self.straighten_blocks = straighten_blocks
-        if self.straighten_bottleneck != 0:
+        if self.straighten_blocks != 0:
             self.additional_bottleneck = bottleneck(
                 channels,
                 expansion=expansion,
                 instance_norm=instance_norm,
-                n_blocks=self.straighten_bottleneck
+                n_blocks=self.straighten_blocks
             )
 
     def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
@@ -342,7 +342,7 @@ class MaskMSTTransformer(RegionConvertTransformer):
         getattr(self, f"{region}_inspiration").setTarget(getattr(self, f"{region}_target_repr"))
         transformed_enc = getattr(self, f"{region}_inspiration")(enc)
         transformed_enc = getattr(self, f"{region}_bottleneck")(transformed_enc)
-        if self.straighten_bottleneck != 0:
+        if self.straighten_blocks != 0:
             return self.additional_bottleneck(transformed_enc)
         else:
             return transformed_enc
