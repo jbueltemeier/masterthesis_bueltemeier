@@ -3,8 +3,6 @@ from os import path
 from argparse import Namespace
 
 
-
-
 def main(args):
     folder_path = args.dataset_dir
     dataset_folder = path.join(folder_path,  'CelebAMask-HQ-mask')
