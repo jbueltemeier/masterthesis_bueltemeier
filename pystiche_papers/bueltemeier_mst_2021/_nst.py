@@ -299,7 +299,10 @@ def mask_training(
 
     regions = list(style_images_and_guides.keys())
     transformer = MaskMSTTransformer(
-        regions, instance_norm=instance_norm, in_channels=1
+        regions,
+        instance_norm=instance_norm,
+        in_channels=1,
+        straighten_blocks=hyper_parameters.masked.straighten_blocks
     )
     transformer = transformer.train().to(device)
 

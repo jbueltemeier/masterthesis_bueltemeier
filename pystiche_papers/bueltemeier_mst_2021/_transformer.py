@@ -294,7 +294,12 @@ class SubstyleMSTTransformer(SubstylesRegionConvertTransformer):
 
 
 class MaskMSTTransformer(RegionConvertTransformer):
-    def __init__(self, regions: Sequence[str], in_channels=3, instance_norm=False, recalc_enc: bool = True) -> None:
+    def __init__(self,
+                 regions: Sequence[str],
+                 in_channels=3,
+                 instance_norm=True,
+                 recalc_enc: bool = True,
+                 straighten_blocks: int = 0) -> None:
         self.recalc_enc = recalc_enc
         channels = 32
         expansion = 4
@@ -304,6 +309,15 @@ class MaskMSTTransformer(RegionConvertTransformer):
         for region in regions:
             setattr(self, f"{region}_inspiration", Inspiration(channels * expansion))
             setattr(self, f"{region}_bottleneck", bottleneck(channels, expansion=expansion, instance_norm=instance_norm))
+
+        self.straighten_blocks = straighten_blocks
+        if self.straighten_bottleneck != 0:
+            self.additional_bottleneck = bottleneck(
+                channels,
+                expansion=expansion,
+                instance_norm=instance_norm,
+                n_blocks=self.straighten_bottleneck
+            )
 
     def input_enc_to_repr(self, enc: torch.Tensor, region: str = "") -> torch.Tensor:
         inpur_repr = enc
@@ -327,4 +341,8 @@ class MaskMSTTransformer(RegionConvertTransformer):
             self.set_target_image(getattr(self, f"{region}_target_image"), region=region)
         getattr(self, f"{region}_inspiration").setTarget(getattr(self, f"{region}_target_repr"))
         transformed_enc = getattr(self, f"{region}_inspiration")(enc)
-        return getattr(self, f"{region}_bottleneck")(transformed_enc)
+        transformed_enc = getattr(self, f"{region}_bottleneck")(transformed_enc)
+        if self.straighten_bottleneck != 0:
+            return self.additional_bottleneck(transformed_enc)
+        else:
+            return transformed_enc
