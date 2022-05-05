@@ -88,6 +88,14 @@ def content_transform(image_size) -> nn.Sequential:
     return nn.Sequential(*transforms_)
 
 
+def content_mask_transform(image_size) -> nn.Sequential:
+    transforms_ = [
+        transforms.Resize(image_size, edge="short", interpolation_mode="nearest"),
+        transforms.CenterCrop((image_size, image_size)),
+    ]
+    return nn.Sequential(*transforms_)
+
+
 def read_image_and_guides(image, **read_kwargs):
     return (
         image.read(**read_kwargs),
@@ -156,7 +164,7 @@ def get_style_images_and_guides(style, images, image_size, styles, args):
 
 image_numbers = [
     22555,23597,23620,23701,24130,24294,24409,24405,24525,24539,24602,
-    92,249,265,356,16569,16584,17858,17931,18389,18505,18565,18568,
+    # 92,249,265,356,16569,16584,17858,17931,18389,18505,18565,18568,
     # 18591,18789,19758,19912,21001,21153,21922,22287,22294,
     # 22858,22947,23269,23350,23451,23486,24142,24915,
     # 10,18,35,143,203,196,194,503,724,756,838,898,962,1222,1439,2025,
@@ -167,11 +175,11 @@ image_numbers = [
 detail_image_numbers = [
     (22555, (50,150,200,300)),
     (22555, (200,300,200,300)),
-    (22555, (670,750,120,200)),
+    # (22555, (670,750,120,200)),
     (23620, (20,120,220,320)),
     (23620, (200,300,200,300)),
-    (23620, (670,770,550,650)),
-    (22294, (660,760,540,640)),
+    # (23620, (670,770,550,650)),
+    # (22294, (660,760,540,640)),
     (22294, (10,110,280,380)),
     (22294, (180,280,220,320)),
 ]
