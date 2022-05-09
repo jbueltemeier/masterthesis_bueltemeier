@@ -95,12 +95,13 @@ def conv_block(
     if upsample:
         modules += [upsample_block(scale_factor=upsample)]
 
-    modules += [
-        norm(in_channels, instance_norm),
-        nn.ReLU(inplace=inplace),
-    ]
+
     modules += [
         conv(in_channels, out_channels, kernel_size, stride=stride, padding=padding)
+    ]
+    modules += [
+        norm(out_channels, instance_norm),
+        nn.ReLU(inplace=inplace),
     ]
 
     return nn.Sequential(*modules)
@@ -173,6 +174,14 @@ class UpResidualBlock(nn.Module):
             upsample_block(scale_factor=2),
             conv(in_channels, channels * expansion, kernel_size=1, stride=1)
         ])
+        # self.residual_layer = conv_block(
+        #     in_channels,
+        #     channels * expansion,
+        #     kernel_size=1,
+        #     stride=1,
+        #     upsample=stride,
+        #     instance_norm=instance_norm,
+        # )
 
         modules = [
             conv_block(

@@ -126,11 +126,11 @@ def stylise_image_numbers(
             whitening_background(output_image, content_guides, output_name)
 
 
-def stylise_detail_images(transformer, image_size, masked=True, save_image=False):
+def stylise_detail_images(transformer, image_size=150, masked=True, save_image=False):
     hyper_parameters = init_detail_hyper_parameters(image_size)
     for image_number, detail_position in _utils.detail_image_numbers:
         content_image, content_guides = _utils.get_guided_images_from_dataset(
-            args, image_number)
+            args, image_number, image_size=768)
         content_image = _utils.crop_image_detail(content_image, detail_position)
         content_guides = _utils.crop_guides_detail(content_guides, detail_position)
         if masked:
@@ -141,7 +141,11 @@ def stylise_detail_images(transformer, image_size, masked=True, save_image=False
                 hyper_parameters=hyper_parameters
             )
         else:
-            output_image, _ = paper.stylization(content_image, transformer)
+            output_image, _ = paper.stylization(
+                content_image,
+                transformer,
+                hyper_parameters=hyper_parameters
+            )
         regions = ''.join(list(content_guides.keys()))
         output_name = f"{image_number}_intaglio_detail_{regions}"
         if args.instance_norm:
@@ -181,13 +185,13 @@ def stylise_main(args, time_track=False, detail=True, save_segmentation=True):
             save_segmentation=save_segmentation,
             number_images=0
         )
-        stylise_image_numbers(
-            transformer,
-            args.masked,
-            save_segmentation=save_segmentation,
-            content_image_save=True,
-            white_background=True,
-        )
+        # stylise_image_numbers(
+        #     transformer,
+        #     args.masked,
+        #     save_segmentation=save_segmentation,
+        #     content_image_save=True,
+        #     white_background=True,
+        # )
 
         if detail:
             stylise_detail_images(transformer, masked=args.masked)
@@ -208,13 +212,13 @@ def stylise_main(args, time_track=False, detail=True, save_segmentation=True):
             save_segmentation=save_segmentation,
             number_images=0
         )
-        stylise_image_numbers(
-            transformer,
-            args.masked,
-            save_segmentation=save_segmentation,
-            content_image_save=True,
-            white_background=True,
-        )
+        # stylise_image_numbers(
+        #     transformer,
+        #     args.masked,
+        #     save_segmentation=save_segmentation,
+        #     content_image_save=True,
+        #     white_background=True,
+        # )
         if detail:
             stylise_detail_images(transformer, masked=args.masked)
 
@@ -458,5 +462,5 @@ def stylisation(args, track_time=False):
 
 if __name__ == "__main__":
     args = parse_input()
-    # stylisation(args)
-    edge_stylisation(args)
+    stylisation(args)
+    # edge_stylisation(args)

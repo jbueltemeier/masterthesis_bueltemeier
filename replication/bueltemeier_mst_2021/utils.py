@@ -75,7 +75,7 @@ def init_dataset(masked=True, programming_dataset=True):
         here = path.dirname(__file__)
         dataset_path = path.join(here, "data", "images", "dataset", "CelebAMask-HQ")
     else:  # extern --  example Rechenknecht
-        dataset_path = '~/datasets/celebamask/CelebAMask-HQ/'
+        dataset_path = '/home/julianbueltemeier/datasets/celebamask/CelebAMask-HQ/'
     return path.join(dataset_path, "CelebAMask-HQ-mask") if masked else \
         path.join(dataset_path, "CelebA-HQ-img")
 
@@ -175,11 +175,11 @@ image_numbers = [
 detail_image_numbers = [
     (22555, (50,150,200,300)),
     (22555, (200,300,200,300)),
-    # (22555, (670,750,120,200)),
+    (22555, (670,750,120,200)),
     (23620, (20,120,220,320)),
     (23620, (200,300,200,300)),
-    # (23620, (670,770,550,650)),
-    # (22294, (660,760,540,640)),
+    (23620, (670,770,550,650)),
+    (22294, (660,760,540,640)),
     (22294, (10,110,280,380)),
     (22294, (180,280,220,320)),
 ]
@@ -199,7 +199,7 @@ def collect_guides(dir: str):
     return data.LocalImageCollection(guides)
 
 
-def get_guided_images_from_dataset(args, image_number):
+def get_guided_images_from_dataset(args, image_number, image_size=512):
     root = init_dataset(masked=True,programming_dataset=args.programming_dataset)
     local_path = path.join(root,  str(image_number).rjust(5, '0'))
     images = data.LocalImageCollection(
@@ -209,8 +209,8 @@ def get_guided_images_from_dataset(args, image_number):
             guides=collect_guides(path.join(root,  str(image_number).rjust(5, '0'), "guides"))),
             }
     )
-    complete_image = images["Image"].read(size=512, device=args.device)
-    guides = images["Image"].guides.read(size=512, device=args.device)
+    complete_image = images["Image"].read(size=image_size, device=args.device)
+    guides = images["Image"].guides.read(size=image_size, device=args.device)
     return complete_image, guides
 
 
@@ -227,8 +227,11 @@ def crop_guides_detail(guides, positons):
     return reduced_guides
 
 
-def crop_detail(args, umage_number=22294):
-    content_image, content_guides = get_guided_images_from_dataset(args, 22294)
-    content_image = crop_image_detail(content_image, (180,280,220,320))
-    content_guides = crop_guides_detail(content_guides, (180,280,220,320))
+def crop_detail(args, image_number, detail_cords):
+    content_image, content_guides = get_guided_images_from_dataset(
+        args,
+        image_number,
+        image_size=768
+    )
+    content_image = crop_image_detail(content_image, detail_cords)
     image.show_image(content_image)
