@@ -134,9 +134,9 @@ def substyle_masked_training(args, style):
 
     hyper_parameters = paper.hyper_parameters()
 
-    hyper_parameters.gram_style_loss.score_weight = 1e3
-    hyper_parameters.batch_sampler.num_iterations = 240000
-    hyper_parameters.batch_sampler.batch_size = 4
+    hyper_parameters.gram_style_loss.score_weight = 1e2
+    hyper_parameters.batch_sampler.num_iterations = 100000
+    hyper_parameters.batch_sampler.batch_size = 1
 
     images = paper.images(args.image_source_dir)
     # style_image, style_guides = _utils.read_image_and_guides(images[style], size=image_size, device=args.device)

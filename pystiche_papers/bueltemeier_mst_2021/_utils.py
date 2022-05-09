@@ -40,13 +40,13 @@ def hyper_parameters() -> HyperParameters:
     style_loss_layers = ("relu1_1", "relu2_1", "relu3_1")
     style_loss = HyperParameters(
         layers=style_loss_layers,
-        layer_weights="sum", # compute_layer_weights(style_loss_layers),
-        score_weight=1e3,
+        layer_weights=compute_layer_weights(style_loss_layers),
+        score_weight=1e0,
     )
 
     return HyperParameters(
         content_loss=HyperParameters(
-            layer="relu2_2",
+            layer="relu3_1",
             score_weight=1e0,
         ),
         gram_style_loss=style_loss,
