@@ -119,6 +119,17 @@ def masked_training(args, style):
 
 
 def substyle_masked_training(args, style):
+    styles = (
+        "DM_100_1996",
+        "MAD_20_2005",
+        "Specimen_0_2",
+        "Specimen_0_2005",
+        "UHD_20_1997",
+        "GBP_5_2002",
+        "UAH_1_2006",
+        "LRD_50_2008",
+        "MAD_2000_2002",
+    )
     image_size = 512
 
     hyper_parameters = paper.hyper_parameters()
@@ -128,8 +139,12 @@ def substyle_masked_training(args, style):
     hyper_parameters.batch_sampler.batch_size = 4
 
     images = paper.images(args.image_source_dir)
-    style_image, style_guides = _utils.read_image_and_guides(images[style], size=image_size, device=args.device)
-    del style_guides["background"]
+    # style_image, style_guides = _utils.read_image_and_guides(images[style], size=image_size, device=args.device)
+    style_images_and_guides = _utils.get_style_images_and_guides(style, images,
+                                                          image_size, styles,
+                                                          args)
+
+    del style_images_and_guides["background"]
     dataset = paper.dataset(path.join(args.dataset_dir), )
     image_loader = paper.image_loader(
         dataset, pin_memory=str(args.device).startswith("cuda"),hyper_parameters=hyper_parameters
@@ -137,8 +152,7 @@ def substyle_masked_training(args, style):
 
     transformer = paper.substyle_mask_training(
         image_loader,
-        style_image,
-        style_guides,
+        style_images_and_guides,
         instance_norm=args.instance_norm,
         hyper_parameters=hyper_parameters,
         quiet=args.quiet,
@@ -156,7 +170,7 @@ def substyle_masked_training(args, style):
         content_regions = content_guides.keys()
         delete_region = []
         for region in content_regions:
-            if region not in style_guides.keys():
+            if region not in style_images_and_guides.keys():
                 delete_region.append(region)
 
         for region in delete_region:
@@ -248,12 +262,12 @@ if __name__ == "__main__":
             masked=False,
             programming_dataset=args.programming_dataset
         )
-        # substyle_masked_training(args, style)
-        unmasked_training(args, style)
+        substyle_masked_training(args, style)
+        # unmasked_training(args, style)
         args.dataset_dir = _utils.init_dataset(
             masked=True,
             programming_dataset=args.programming_dataset
         )
-        masked_training(args, style)
+        # masked_training(args, style)
 
 

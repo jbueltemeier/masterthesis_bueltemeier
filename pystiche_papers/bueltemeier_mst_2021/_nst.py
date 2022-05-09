@@ -210,8 +210,7 @@ def training(
 
 def substyle_mask_training(
     content_image_loader: DataLoader,
-    style_image: torch.Tensor,
-    style_guides: Dict[str,torch.Tensor],
+    style_images_and_guides: Dict[str, Tuple[torch.Tensor, torch.Tensor]],
     instance_norm: bool = False,
     hyper_parameters: Optional[HyperParameters] = None,
     quiet: bool = False,
@@ -226,7 +225,7 @@ def substyle_mask_training(
     if hyper_parameters is None:
         hyper_parameters = _hyper_parameters()
 
-    regions = list(style_guides.keys())
+    regions = list(style_images_and_guides.keys())
     transformer = SubstyleMSTTransformer(
         regions, instance_norm=instance_norm, in_channels=1
     )
@@ -240,12 +239,11 @@ def substyle_mask_training(
     style_transform = _style_transform(hyper_parameters=hyper_parameters)
     style_transform = style_transform.to(device)
 
-    style_image = style_transform(style_image)
-
     style_mask_transform = _style_mask_transform(hyper_parameters=hyper_parameters)
     style_mask_transform = style_mask_transform.to(device)
 
-    for region, guide in style_guides.items():
+    for region, (style_image, guide) in style_images_and_guides.items():
+        style_image = style_transform(style_image)
         transformer.set_target_image(style_image, region)
         criterion.set_style_image(region, grayscale_to_fakegrayscale(style_image))
         guide = style_mask_transform(guide)
