@@ -94,13 +94,18 @@ def conv_block(
     modules: List[nn.Module] = []
     if upsample:
         modules += [upsample_block(scale_factor=upsample)]
-    modules += [
-        norm(in_channels, instance_norm),
-        nn.ReLU(inplace=inplace),
-    ]
+    # modules += [
+    #     norm(in_channels, instance_norm),
+    #     nn.ReLU(inplace=inplace),
+    # ]
     modules += [
         conv(in_channels, out_channels, kernel_size, stride=stride, padding=padding)
     ]
+    modules += [
+        norm(out_channels, instance_norm),
+        nn.ReLU(inplace=inplace),
+    ]
+
     return nn.Sequential(*modules)
 
 
@@ -167,18 +172,18 @@ class UpResidualBlock(nn.Module):
         self, in_channels, channels, stride=2, expansion=4, instance_norm=False
     ):
         super(UpResidualBlock, self).__init__()
-        self.residual_layer = nn.Sequential(*[
-            upsample_block(scale_factor=2),
-            conv(in_channels, channels * expansion, kernel_size=1, stride=1)
-        ])
-        # self.residual_layer = conv_block(
-        #     in_channels,
-        #     channels * expansion,
-        #     kernel_size=1,
-        #     stride=1,
-        #     upsample=stride,
-        #     instance_norm=instance_norm,
-        # )
+        # self.residual_layer = nn.Sequential(*[
+        #     upsample_block(scale_factor=2),
+        #     conv(in_channels, channels * expansion, kernel_size=1, stride=1)
+        # ])
+        self.residual_layer = conv_block(
+            in_channels,
+            channels * expansion,
+            kernel_size=1,
+            stride=1,
+            upsample=stride,
+            instance_norm=instance_norm,
+        )
 
         modules = [
             conv_block(
@@ -300,8 +305,8 @@ def decoder(in_channels, out_channels=3, expansion=4, instance_norm=False):
             expansion=expansion,
             instance_norm=instance_norm,
         ),
-        norm(16*expansion, instance_norm=instance_norm),
-        nn.ReLU(inplace=True),
+        # norm(16*expansion, instance_norm=instance_norm),
+        # nn.ReLU(inplace=True),
         conv(16 * expansion, out_channels, kernel_size=7, stride=1),
     ]
     return SequentialDecoder(*modules)
