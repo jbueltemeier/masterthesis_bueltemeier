@@ -126,7 +126,88 @@ def stylise_image_numbers(
             whitening_background(output_image, content_guides, output_name)
 
 
-def stylise_detail_images(transformer, image_size=150, masked=True, save_image=False):
+def stylise_substyle_image_numbers(
+        transformer,
+        save_segmentation=True,
+        content_image_save=True,
+        white_background=True
+):
+    transformer.enable_masked_transfer()
+    for image_number in _utils.image_numbers:
+        content_image, content_guides = _utils.get_guided_images_from_dataset(
+            args,
+            image_number
+        )
+        guides = content_guides.copy()
+        del guides['background']
+        output_image, _ = paper.mask_stylization(
+            content_image,
+            guides,
+            transformer
+        )
+
+        output_name = f"{image_number}_intaglio"
+        if args.instance_norm:
+            output_name += "__instance_norm"
+        output_name += "__substyle"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        image.write_image(output_image, output_file)
+
+        if save_segmentation:
+            segmentation_image(content_guides, output_name)
+
+        if content_image_save:
+            save_content_image(content_image, output_name)
+
+        if white_background:
+            whitening_background(output_image, content_guides, output_name)
+
+
+def stylise_substyle_random_detail_images(
+        transformer,
+        image_size=150,
+        save_image=False
+):
+    hyper_parameters = init_detail_hyper_parameters(image_size)
+    transformer.enable_masked_transfer()
+    for image_number in _utils.image_numbers:
+        base_content_image, base_content_guides = _utils.get_guided_images_from_dataset(
+            args, image_number, image_size=768)
+        for detail_position in _utils.coords_iterator():
+            content_image = _utils.crop_image_detail(base_content_image, detail_position)
+            content_guides = _utils.crop_guides_detail(base_content_guides, detail_position)
+            if 'background' in content_guides:
+                del content_guides['background']
+            if not content_guides:
+                continue
+            output_image, _ = paper.mask_stylization(
+                content_image,
+                content_guides,
+                transformer,
+                hyper_parameters=hyper_parameters
+            )
+
+            regions = ''.join(list(content_guides.keys()))
+            output_name = f"{image_number}_intaglio_detail_{regions}"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            output_name += "__substyle"
+            output_name += ",".join([str(pos) for pos in detail_position])
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            image.write_image(output_image, output_file)
+
+            if save_image:
+                transform = _utils.content_transform(170)
+                output_file = path.join(args.image_results_dir, f"{output_name}_image.png")
+                image.write_image(transform(content_image), output_file)
+
+
+def stylise_detail_images(
+        transformer,
+        image_size=150,
+        masked=True,
+        save_image=False
+):
     hyper_parameters = init_detail_hyper_parameters(image_size)
     for image_number, detail_position in _utils.detail_image_numbers:
         content_image, content_guides = _utils.get_guided_images_from_dataset(
@@ -165,13 +246,143 @@ def stylise_detail_images(transformer, image_size=150, masked=True, save_image=F
             output_file = path.join(args.image_results_dir, f"{output_name}_image.png")
             image.write_image(transform(content_image), output_file)
 
+def stylise_substyle_detail_images(
+        transformer,
+        image_size=200,
+        save_image=True
+):
+    hyper_parameters = init_detail_hyper_parameters(image_size)
+    transformer.enable_masked_transfer()
+    for image_number, detail_position in _utils.detail_image_numbers:
+        content_image, content_guides = _utils.get_guided_images_from_dataset(
+            args, image_number, image_size=768)
+        content_image = _utils.crop_image_detail(content_image, detail_position)
+        content_guides = _utils.crop_guides_detail(content_guides, detail_position)
+        output_image, _ = paper.mask_stylization(
+            content_image,
+            content_guides,
+            transformer,
+            hyper_parameters=hyper_parameters
+        )
 
-def stylise_main(args, time_track=False, detail=True, save_segmentation=True):
+        regions = ''.join(list(content_guides.keys()))
+        output_name = f"{image_number}_intaglio_detail_{regions}"
+        if args.instance_norm:
+            output_name += "__instance_norm"
+        output_name += "__substyle"
+        output_file = path.join(args.image_results_dir, f"{output_name}.png")
+        if "background" in content_guides.keys():
+            output_image = output_image.masked_fill(
+                content_guides["background"] == 1,
+                1
+            )
+        image.write_image(output_image, output_file)
+
+        if save_image:
+            transform = _utils.content_transform(170)
+            output_file = path.join(args.image_results_dir, f"{output_name}_image.png")
+            image.write_image(transform(content_image), output_file)
+
+
+def stylise_random_detail_images(
+        transformer,
+        image_size=150,
+        masked=True,
+        save_image=False
+):
+    hyper_parameters = init_detail_hyper_parameters(image_size)
+    for image_number in _utils.image_numbers:
+        base_content_image, base_content_guides = _utils.get_guided_images_from_dataset(
+            args, image_number, image_size=768)
+        for detail_position in _utils.coords_iterator():
+            content_image = _utils.crop_image_detail(base_content_image, detail_position)
+            content_guides = _utils.crop_guides_detail(base_content_guides, detail_position)
+            if masked:
+                output_image, _ = paper.mask_stylization(
+                    content_image,
+                    content_guides,
+                    transformer,
+                    hyper_parameters=hyper_parameters
+                )
+            else:
+                output_image, _ = paper.stylization(
+                    content_image,
+                    transformer,
+                    hyper_parameters=hyper_parameters
+                )
+            regions = ''.join(list(content_guides.keys()))
+            output_name = f"{image_number}_intaglio_detail_{regions}"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            if masked:
+                output_name += "__mask"
+            output_name += ",".join([str(pos) for pos in detail_position])
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            image.write_image(output_image, output_file)
+
+            if save_image:
+                transform = _utils.content_transform(170)
+                output_file = path.join(args.image_results_dir, f"{output_name}_image.png")
+                image.write_image(transform(content_image), output_file)
+
+            segmentation_image(content_guides, output_name)
+
+
+def stylise_random_binaryedge_detail_images(
+        transformer,
+        image_size=150,
+        save_image=False
+):
+    hyper_parameters = init_detail_hyper_parameters(image_size)
+    transform = _utils.content_mask_transform(image_size)
+    for image_number in _utils.image_numbers:
+        base_content_image, base_content_guides = _utils.get_guided_images_from_dataset(
+            args, image_number, image_size=768)
+        for detail_position in _utils.coords_iterator():
+            content_image = _utils.crop_image_detail(base_content_image, detail_position)
+            content_guides = _utils.crop_guides_detail(base_content_guides, detail_position)
+            result_images = []
+            if not content_guides:
+                continue
+            for region, guide in content_guides.items():
+                output_image, _ = paper.mask_stylization(
+                    content_image,
+                    {region: guide},
+                    transformer,
+                    hyper_parameters=hyper_parameters
+                )
+                output_image = output_image * transform(guide)
+                result_images.append(output_image)
+            output_image = torch.sum(torch.stack(result_images), dim=0)
+            regions = ''.join(list(content_guides.keys()))
+            output_name = f"{image_number}_intaglio_detail_{regions}"
+            if args.instance_norm:
+                output_name += "__instance_norm"
+            output_name += "__mask"
+            output_name += ",".join([str(pos) for pos in detail_position])
+            output_name += "__binary_edge"
+            output_file = path.join(args.image_results_dir, f"{output_name}.png")
+            image.write_image(output_image, output_file)
+
+            if save_image:
+                transform = _utils.content_transform(170)
+                output_file = path.join(args.image_results_dir, f"{output_name}_image.png")
+                image.write_image(transform(content_image), output_file)
+
+
+def stylise_main(
+        args,
+        time_track=False,
+        detail=True,
+        save_segmentation=True,
+        random_detail=True
+):
     if args.masked:
         model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
         # model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-ba8a81c1.pth"
+        model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-8ddf3661.pth"
         transformer = load_transformer(
-            path.join(args.model_dir, "stylization"),
+            path.join(args.model_dir, "masked"),
             args.instance_norm,
             model_name
         )
@@ -195,6 +406,8 @@ def stylise_main(args, time_track=False, detail=True, save_segmentation=True):
 
         if detail:
             stylise_detail_images(transformer, masked=args.masked)
+            # if random_detail:
+            #     stylise_random_detail_images(transformer, masked=args.masked)
     else:
         model_name = "bueltemeier_2021__MAD_20_2005__intaglio__instance_norm-379670d4.pth"
         transformer = load_transformer(
@@ -220,7 +433,9 @@ def stylise_main(args, time_track=False, detail=True, save_segmentation=True):
         #     white_background=True,
         # )
         if detail:
-            stylise_detail_images(transformer, masked=args.masked)
+            # stylise_detail_images(transformer, masked=args.masked)
+            if random_detail:
+                stylise_random_detail_images(transformer, masked=args.masked)
 
 
 def binary_edge_stylise_image_numbers(
@@ -276,6 +491,8 @@ def binary_edge_substyle_stylisation(transformer, image_size,save_segmentation=T
         content_image = _utils.crop_image_detail(content_image, detail_position)
         content_guides = _utils.crop_guides_detail(content_guides, detail_position)
         result_images = []
+        if not content_guides:
+            continue
         for region, guide in content_guides.items():
             output_image, _ = paper.mask_stylization(
                 content_image,
@@ -309,8 +526,8 @@ def binary_edge_substyle_stylisation(transformer, image_size,save_segmentation=T
 
 
 def edge_stylisation(args):
-    model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
-    # model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-ba8a81c1.pth"
+    # model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
+    model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-ba8a81c1.pth"
     transformer = load_transformer(
         path.join(args.model_dir, "stylization"),
         args.instance_norm,
@@ -326,15 +543,37 @@ def edge_stylisation(args):
     )
     binary_edge_stylise_image_numbers(transformer)
 
-    # image_size = 200
-    # stylise_detail_images(transformer, image_size, masked=args.masked)
-    # binary_edge_substyle_stylisation(transformer, image_size, save_image=False)
+    image_size = 200
+    stylise_detail_images(transformer, image_size, masked=args.masked)
+    binary_edge_substyle_stylisation(transformer, image_size, save_image=False)
+
+    stylise_random_detail_images(transformer, image_size=image_size)
+    stylise_random_binaryedge_detail_images(transformer, image_size=image_size)
 
 
-def load_transformer(model_dir, instance_norm, model_name):
+def substyle_stylization(args):
+    model_name = "bueltemeier_2021__substyle_mask__MAD_20_2005__intaglio__instance_norm-1954c3dd.pth"
+    # model_name = "bueltemeier_2021__substyle_mask__MAD_20_2005__intaglio__instance_norm-59585d54.pth"
+    model_name = "bueltemeier_2021__substyle_mask__UHD_20_1997__intaglio__instance_norm-dd721bd0.pth"
+
+    transformer = load_transformer(
+        path.join(args.model_dir, "substyle"),
+        args.instance_norm,
+        model_name,
+        substyle=True
+    )
+    # stylise_substyle_image_numbers(transformer)
+    stylise_substyle_detail_images(transformer)
+    # stylise_substyle_random_detail_images(transformer)
+
+
+def load_transformer(model_dir, instance_norm, model_name, substyle=False):
     def load(regions=None):
         if len(regions) > 1:
-            return paper.MaskMSTTransformer(regions, in_channels=1, instance_norm=instance_norm, recalc_enc=False)
+            if substyle:
+                return paper.SubstyleMSTTransformer(regions, in_channels=1, instance_norm=instance_norm, recalc_enc=False)
+            else:
+                return paper.MaskMSTTransformer(regions, in_channels=1, instance_norm=instance_norm, recalc_enc=False)
         else:
             return paper.MSTTransformer(in_channels=1, instance_norm=instance_norm)
 
@@ -355,14 +594,14 @@ def load_transformer(model_dir, instance_norm, model_name):
     local_weights_available = state_dict is not None
     if local_weights_available:
         transformer = load(regions)
-        if isinstance(transformer, paper.MaskMSTTransformer):
+        if isinstance(transformer, paper.MaskMSTTransformer) or isinstance(transformer, paper.SubstyleMSTTransformer):
             if regions is not None:
                 for region in regions:
                     if f"{region}_target_guide" in state_dict.keys():
                         init_image = torch.rand(state_dict[f"{region}_target_guide"].size())
                         init_guide = torch.ones(state_dict[f"{region}_target_guide"].size())
                     else:
-                        image_size = _utils.UHD_20_1997[region]
+                        image_size = _utils.MAD_20_1997[region]
                         init_image = torch.rand(image_size)
                         init_guide = torch.ones(image_size)
                         state_dict[f"{region}_target_guide"] = init_guide
@@ -441,7 +680,7 @@ def parse_input():
 
 
 def stylisation(args, track_time=False):
-    for masked_state in [True, False]:
+    for masked_state in [True]:
         if track_time:
             for device in ['cuda', 'cpu']:
                 args.masked = masked_state
@@ -460,7 +699,34 @@ def stylisation(args, track_time=False):
             stylise_main(args)
 
 
+def mask_image(args):
+    image_number = 22294
+    content_image, content_guides = _utils.get_guided_images_from_dataset(
+        args,
+        image_number,
+        image_size=768
+    )
+    output_image = image.read_image(path.join(
+        args.image_source_dir,
+        "22294_intaglio_background_mask.png"
+    ), size=768, device=args.device)
+    image.write_image(content_image, path.join(args.image_results_dir, f"content.png"))
+    image.write_image(output_image,
+                      path.join(args.image_results_dir, f"intaglio_result.png"))
+    for region, guide in content_guides.items():
+        input_result = content_image * guide
+        output_result = output_image * guide
+        name = f"{image_number}_{region}"
+        input_file = path.join(args.image_results_dir, f"{name}_input.png")
+        output_file = path.join(args.image_results_dir, f"{name}_intaglio.png")
+        image.write_image(guide, path.join(args.image_results_dir, f"{region}_guide.png"))
+        image.write_image(input_result, input_file)
+        image.write_image(output_result, output_file)
+
+
 if __name__ == "__main__":
     args = parse_input()
-    stylisation(args)
-    # edge_stylisation(args)
+    # stylisation(args)
+    edge_stylisation(args)
+    # substyle_stylization(args)
+    # mask_image(args)

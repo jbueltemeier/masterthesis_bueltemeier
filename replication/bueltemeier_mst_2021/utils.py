@@ -3,8 +3,9 @@ from os import path
 
 from torch import nn
 from pystiche.image import transforms
+import itertools
 
-from typing import Dict
+from typing import Dict, List, Optional
 from torchvision.datasets.folder import is_image_file
 
 from pystiche import data, image
@@ -163,13 +164,13 @@ def get_style_images_and_guides(style, images, image_size, styles, args):
     }
 
 image_numbers = [
-    22555,23597,23620,23701,24130,24294,24409,24405,24525,24539,24602,
+    22555,23597,23620,23701,24130,24294,24409,24405,24525,24539,24602,16584,17858,22294,22555,
     # 92,249,265,356,16569,16584,17858,17931,18389,18505,18565,18568,
     # 18591,18789,19758,19912,21001,21153,21922,22287,22294,
     # 22858,22947,23269,23350,23451,23486,24142,24915,
     # 10,18,35,143,203,196,194,503,724,756,838,898,962,1222,1439,2025,
-    2263,2638,2910,2094,3423,4069,4656,4922,4934,5069,5064,5087,5393,5495,
-    5723,5987,6235,6591,6582,6635,6724,7344,7463,7607,7812,8062,8067,8068
+    # 2263,2638,2910,2094,3423,4069,4656,4922,4934,5069,5064,5087,5393,5495,
+    # 5723,5987,6235,6591,6582,6635,6724,7344,7463,7607,7812,8062,8067,8068
 ]
 
 detail_image_numbers = [
@@ -235,3 +236,13 @@ def crop_detail(args, image_number, detail_cords):
     )
     content_image = crop_image_detail(content_image, detail_cords)
     image.show_image(content_image)
+
+
+def coords_iterator(coords_list: Optional[List[int]] = None, delta: int = 150):
+    if coords_list is None:
+        coords_list = [100, 200, 300, 400, 500, 600]
+        coords_list = [150, 250, 350]
+
+    coords = itertools.product(coords_list, coords_list)
+    for xcoord, ycoord in coords:
+        yield (xcoord, xcoord+delta, ycoord, ycoord+delta)
