@@ -263,11 +263,11 @@ if __name__ == "__main__":
             programming_dataset=args.programming_dataset
         )
         substyle_masked_training(args, style)
-        # unmasked_training(args, style)
+        unmasked_training(args, style)
         args.dataset_dir = _utils.init_dataset(
             masked=True,
             programming_dataset=args.programming_dataset
         )
-        # masked_training(args, style)
+        masked_training(args, style)
 
 

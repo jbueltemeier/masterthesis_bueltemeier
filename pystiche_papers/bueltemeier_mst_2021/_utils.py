@@ -46,7 +46,7 @@ def hyper_parameters() -> HyperParameters:
 
     return HyperParameters(
         content_loss=HyperParameters(
-            layer="relu3_1",
+            layer="relu2_2",
             score_weight=1e0,
         ),
         gram_style_loss=style_loss,

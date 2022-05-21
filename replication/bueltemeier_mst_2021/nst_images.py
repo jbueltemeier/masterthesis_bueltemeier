@@ -131,15 +131,15 @@ def guided_nst(args):
     perceptual_loss.set_content_image(content_image)
     perceptual_loss.set_style_image(style_image)
 
-    # starting_point = "content"
-    # input_image = misc.get_input_image(starting_point, content_image=content_image)
-    #
-    # output_image = optim.image_optimization(input_image, perceptual_loss, num_steps=500)
-    #
-    # output_file = path.join(
-    #     args.image_results_dir, f"nst_IST_paper_guided__without.jpg"
-    # )
-    # image.write_image(output_image, output_file)
+    starting_point = "content"
+    input_image = misc.get_input_image(starting_point, content_image=content_image)
+
+    output_image = optim.image_optimization(input_image, perceptual_loss, num_steps=500)
+
+    output_file = path.join(
+        args.image_results_dir, f"nst_IST_paper_guided__without.jpg"
+    )
+    image.write_image(output_image, output_file)
 
     #######################################guided nst##################################################################
 
@@ -209,6 +209,6 @@ def parse_input():
 
 if __name__ == "__main__":
     args = parse_input()
-    # nst(args)
-    # layer_nst(args)
+    nst(args)
+    layer_nst(args)
     guided_nst(args)

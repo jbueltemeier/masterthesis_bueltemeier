@@ -453,7 +453,7 @@ def binary_edge_stylise_image_numbers(
         for region, guide in content_guides.items():
             output_image, _ = paper.mask_stylization(
                 content_image,
-                {region: guide},
+                {region: torch.ones(guide.size()).to('cuda:0')},
                 transformer,
             )
             output_image = output_image * guide
@@ -496,7 +496,7 @@ def binary_edge_substyle_stylisation(transformer, image_size,save_segmentation=T
         for region, guide in content_guides.items():
             output_image, _ = paper.mask_stylization(
                 content_image,
-                {region: guide},
+                {region: torch.ones(guide.size()).to('cuda:0')},
                 transformer,
                 hyper_parameters=hyper_parameters
             )
@@ -526,29 +526,29 @@ def binary_edge_substyle_stylisation(transformer, image_size,save_segmentation=T
 
 
 def edge_stylisation(args):
-    # model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
-    model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-ba8a81c1.pth"
+    model_name = "bueltemeier_2021__mask__UHD_20_1997__intaglio__instance_norm-e12b57fd.pth"
+    # model_name = "bueltemeier_2021__mask__MAD_20_2005__intaglio__instance_norm-ba8a81c1.pth"
     transformer = load_transformer(
         path.join(args.model_dir, "stylization"),
         args.instance_norm,
         model_name
     )
 
-    stylise_image_numbers(
-        transformer,
-        args.masked,
-        save_segmentation=False,
-        content_image_save=True,
-        white_background=True,
-    )
-    binary_edge_stylise_image_numbers(transformer)
+    # stylise_image_numbers(
+    #     transformer,
+    #     args.masked,
+    #     save_segmentation=False,
+    #     content_image_save=True,
+    #     white_background=True,
+    # )
+    # binary_edge_stylise_image_numbers(transformer)
 
     image_size = 200
     stylise_detail_images(transformer, image_size, masked=args.masked)
     binary_edge_substyle_stylisation(transformer, image_size, save_image=False)
 
-    stylise_random_detail_images(transformer, image_size=image_size)
-    stylise_random_binaryedge_detail_images(transformer, image_size=image_size)
+    # stylise_random_detail_images(transformer, image_size=image_size)
+    # stylise_random_binaryedge_detail_images(transformer, image_size=image_size)
 
 
 def substyle_stylization(args):
@@ -601,7 +601,7 @@ def load_transformer(model_dir, instance_norm, model_name, substyle=False):
                         init_image = torch.rand(state_dict[f"{region}_target_guide"].size())
                         init_guide = torch.ones(state_dict[f"{region}_target_guide"].size())
                     else:
-                        image_size = _utils.MAD_20_1997[region]
+                        image_size = _utils.UHD_20_1997[region]
                         init_image = torch.rand(image_size)
                         init_guide = torch.ones(image_size)
                         state_dict[f"{region}_target_guide"] = init_guide

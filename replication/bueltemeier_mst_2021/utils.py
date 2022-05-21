@@ -1,5 +1,7 @@
 import os
 from os import path
+from PIL import Image, ImageEnhance
+import glob
 
 from torch import nn
 from pystiche.image import transforms
@@ -165,12 +167,12 @@ def get_style_images_and_guides(style, images, image_size, styles, args):
 
 image_numbers = [
     22555,23597,23620,23701,24130,24294,24409,24405,24525,24539,24602,16584,17858,22294,22555,
-    # 92,249,265,356,16569,16584,17858,17931,18389,18505,18565,18568,
-    # 18591,18789,19758,19912,21001,21153,21922,22287,22294,
-    # 22858,22947,23269,23350,23451,23486,24142,24915,
-    # 10,18,35,143,203,196,194,503,724,756,838,898,962,1222,1439,2025,
-    # 2263,2638,2910,2094,3423,4069,4656,4922,4934,5069,5064,5087,5393,5495,
-    # 5723,5987,6235,6591,6582,6635,6724,7344,7463,7607,7812,8062,8067,8068
+    92,249,265,356,16569,16584,17858,17931,18389,18505,18565,18568,
+    18591,18789,19758,19912,21001,21153,21922,22287,22294,
+    22858,22947,23269,23350,23451,23486,24142,24915,
+    10,18,35,143,203,196,194,503,724,756,838,898,962,1222,1439,2025,
+    2263,2638,2910,2094,3423,4069,4656,4922,4934,5069,5064,5087,5393,5495,
+    5723,5987,6235,6591,6582,6635,6724,7344,7463,7607,7812,8062,8067,8068
 ]
 
 detail_image_numbers = [
@@ -246,3 +248,24 @@ def coords_iterator(coords_list: Optional[List[int]] = None, delta: int = 150):
     coords = itertools.product(coords_list, coords_list)
     for xcoord, ycoord in coords:
         yield (xcoord, xcoord+delta, ycoord, ycoord+delta)
+
+
+def increase_contrast(image_path:Optional[str]=None):
+    if image_path is None:
+        image_path = "C:\\Users\\julia\\Desktop\\Arbeit\\Masterarbeit\\Masterarbeit\\Enhanced"
+
+    save_path = path.join(image_path, "Result")
+
+    for i,image_name in enumerate(glob.iglob(image_path + '**/*.png', recursive=False)):
+        img = Image.open(path.join(image_path, image_name))
+        # img.show()
+        filter = ImageEnhance.Sharpness(img)
+        enhance_image = filter.enhance(2)
+        filter2 = ImageEnhance.Contrast(enhance_image)
+        # enhance_image.show()
+        enhance_image2 = filter2.enhance(1.5)
+        enhance_image2.show()
+        old_name = image_name.split("\\")[-1].split(".")[0]
+        # name = f"{old_name}_enhanced.png"
+        name = f"{i}_enhanced.png"
+        enhance_image2.save(path.join(save_path, name))
